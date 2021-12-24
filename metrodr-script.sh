@@ -1,3 +1,4 @@
+# simple comment
 #!/bin/bash
 
 export MANAGEDCLUSTER1="${MANAGEDCLUSTER1:-cluster1}"
