@@ -42,6 +42,13 @@ spec:
                 items:
                   description: Managed cluster information
                   properties:
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: Labels is a map of key value pairs for the managed
+                        cluster. Ramen determines the cluster's location in the topology
+                        based on these labels.
+                      type: object
                     name:
                       description: Name of this managed cluster as configured in OCM/ACM
                       type: string
