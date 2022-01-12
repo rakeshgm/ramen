@@ -25,6 +25,35 @@ type ManagedCluster struct {
 	// Name of this managed cluster as configured in OCM/ACM
 	Name string `json:"name"`
 
+	// Labels is a map of key value pairs for the managed cluster. Ramen
+	// determines the cluster's location in the topology based on these labels.
+	Labels map[string]string `json:"labels,omitempty"`
+	// Actually it feels wrong to duplicate the labels for the managedcluster in
+	// Ramen. It should all be obtained from OCM at some point. This will have
+	// to do until then.
+	// Example
+	//	[e1,e2,w1]
+	//	e1: {
+	//		Labels: {
+	//			topology.kubernetes.io/region: us-east,
+	//			topology.kubernetes.io/zone: us-east-2a,
+	//		}
+	//	}
+	//	e2: {
+	//		Labels: {
+	//			topology.kubernetes.io/region: us-east,
+	//			topology.kubernetes.io/zone: us-east-1c,
+	//		}
+	//	}
+	//	w1: {
+	//		Labels: {
+	//			topology.kubernetes.io/region: us-west,
+	//			topology.kubernetes.io/zone: us-west-2a,
+	//		}
+	//	}
+	//	e1,e2 - sync
+	//	MetroPrimaryOf(e1,e2),w1 - async
+
 	// S3 profile name (in Ramen config) to use as a source to restore PV
 	// related cluster state during recovery or relocate actions of applications
 	// to this managed cluster;  hence, this S3 profile should be available to
