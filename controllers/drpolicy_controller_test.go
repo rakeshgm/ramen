@@ -119,9 +119,30 @@ var _ = Describe("DrpolicyController", func() {
 		clusterRolesExpect()
 	}
 	clusters := [...]ramen.ManagedCluster{
-		{Name: `cluster0`, S3ProfileName: s3ProfileNameConnectSucc},
-		{Name: `cluster1`, S3ProfileName: s3ProfileNameConnectSucc},
-		{Name: `cluster2`, S3ProfileName: s3ProfileNameConnectSucc},
+		{
+			Name:          `cluster0`,
+			S3ProfileName: s3ProfileNameConnectSucc,
+			Labels: map[string]string{
+				corev1.LabelTopologyRegion: "region-a",
+				corev1.LabelTopologyZone:   "zone-a",
+			},
+		},
+		{
+			Name:          `cluster1`,
+			S3ProfileName: s3ProfileNameConnectSucc,
+			Labels: map[string]string{
+				corev1.LabelTopologyRegion: "region-b",
+				corev1.LabelTopologyZone:   "zone-a",
+			},
+		},
+		{
+			Name:          `cluster2`,
+			S3ProfileName: s3ProfileNameConnectSucc,
+			Labels: map[string]string{
+				corev1.LabelTopologyRegion: "region-c",
+				corev1.LabelTopologyZone:   "zone-a",
+			},
+		},
 	}
 	objectMetas := [...]metav1.ObjectMeta{
 		{Name: `drpolicy0`},

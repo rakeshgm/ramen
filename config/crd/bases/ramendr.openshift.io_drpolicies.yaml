@@ -64,6 +64,7 @@ spec:
                         managed clusters.
                       type: string
                   required:
+                  - labels
                   - name
                   - s3ProfileName
                   type: object

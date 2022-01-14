@@ -27,7 +27,7 @@ type ManagedCluster struct {
 
 	// Labels is a map of key value pairs for the managed cluster. Ramen
 	// determines the cluster's location in the topology based on these labels.
-	Labels map[string]string `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels"`
 	// Actually it feels wrong to duplicate the labels for the managedcluster in
 	// Ramen. It should all be obtained from OCM at some point. This will have
 	// to do until then.

@@ -100,11 +100,19 @@ var (
 		Spec: rmn.DRPolicySpec{
 			DRClusterSet: []rmn.ManagedCluster{
 				{
-					Name:          EastManagedCluster,
+					Name: EastManagedCluster,
+					Labels: map[string]string{
+						corev1.LabelTopologyRegion: "region-a",
+						corev1.LabelTopologyZone:   "zone-a",
+					},
 					S3ProfileName: "fakeS3Profile",
 				},
 				{
-					Name:          WestManagedCluster,
+					Name: WestManagedCluster,
+					Labels: map[string]string{
+						corev1.LabelTopologyRegion: "region-b",
+						corev1.LabelTopologyZone:   "zone-a",
+					},
 					S3ProfileName: "fakeS3Profile",
 				},
 			},
