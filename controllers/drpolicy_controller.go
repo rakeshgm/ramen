@@ -77,7 +77,8 @@ func (r *DRPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			return ctrl.Result{}, fmt.Errorf("finalizer add update: %w", u.validatedSetFalse("FinalizerAddFailed", err))
 		}
 
-		if reason, err := validate(ctx, drpolicy, r.APIReader, r.ObjectStoreGetter, req.NamespacedName.String()); err != nil {
+		reason, err := validateDRPolicy(ctx, drpolicy, r.APIReader, r.ObjectStoreGetter, req.NamespacedName.String())
+		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("validate: %w", u.validatedSetFalse(reason, err))
 		}
 
@@ -101,7 +102,7 @@ func (r *DRPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{}, nil
 }
 
-func validate(ctx context.Context, drpolicy *ramen.DRPolicy, apiReader client.Reader,
+func validateDRPolicy(ctx context.Context, drpolicy *ramen.DRPolicy, apiReader client.Reader,
 	objectStoreGetter ObjectStoreGetter, listKeyPrefix string,
 ) (string, error) {
 	for i := range drpolicy.Spec.DRClusterSet {
