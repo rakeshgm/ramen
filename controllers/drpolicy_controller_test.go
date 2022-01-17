@@ -139,7 +139,7 @@ var _ = Describe("DrpolicyController", func() {
 			Name:          `cluster2`,
 			S3ProfileName: s3ProfileNameConnectSucc,
 			Labels: map[string]string{
-				corev1.LabelTopologyRegion: "region-c",
+				corev1.LabelTopologyRegion: "region-a",
 				corev1.LabelTopologyZone:   "zone-a",
 			},
 		},

@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -39,6 +40,9 @@ type DRPolicyReconciler struct {
 	Scheme            *runtime.Scheme
 	ObjectStoreGetter ObjectStoreGetter
 }
+
+// ReasonValidationFailed is set when the DRPolicy could not be validated or is not valid
+const ReasonValidationFailed = "ValidationFailed"
 
 //nolint:lll
 //+kubebuilder:rbac:groups=ramendr.openshift.io,resources=drpolicies,verbs=get;list;watch;create;update;patch;delete
@@ -110,7 +114,59 @@ func validateDRPolicy(ctx context.Context, drpolicy *ramen.DRPolicy, apiReader c
 		return reason, err
 	}
 
+	err = validateManagedClusters(ctx, apiReader, drpolicy)
+	if err != nil {
+		return ReasonValidationFailed, err
+	}
+
 	return "", nil
+}
+
+func validateManagedClusters(ctx context.Context, apiReader client.Reader, drpolicy *ramen.DRPolicy) error {
+	clusterNames := sets.NewString(util.DrpolicyClusterNames(drpolicy)...)
+	regionNames := util.DrpolicyRegionNames(drpolicy)
+	zoneNames := util.DrpolicyZoneNamesWithRegionPrefixed(drpolicy)
+
+	drpolicies, err := util.GetAllDRPolicies(ctx, apiReader)
+	if err != nil {
+		return err
+	}
+
+	for i := range drpolicies.Items {
+		drp := &drpolicies.Items[i]
+
+		// We are comparing the drpolicy with all other drpolicies
+		if drp.ObjectMeta.Name == drpolicy.ObjectMeta.Name {
+			continue
+		}
+
+		// If the managed cluster lists have at least one common cluster, then
+		// their representations of zones and regions should match.
+		if sets.String.Len(clusterNames.Intersection(sets.NewString(util.DrpolicyClusterNames(drp)...))) > 0 {
+			if !regionNames.Equal(util.DrpolicyRegionNames(drp)) {
+				// drpolicies with lists == [e1,e2,w1] [e1,e2,c1] would make it
+				// difficult to establish the regional primary between east,
+				// west and central.
+				// valid cases:
+				// 1. [e1,w1] [e2,c1]
+				// 2. [e1,w1] [c1,d1]
+				// 3. [e1,w2] [e2,w2]
+				return fmt.Errorf("region list doesn't match in drpolicies with common managed clusters, drpolicies: %v %v", drpolicy.Name, drp.Name)
+			}
+			if !zoneNames.Equal(util.DrpolicyZoneNamesWithRegionPrefixed(drp)) {
+				// drpolicies with lists == [e1,e2,w1] [e1,e2,e3,w1] would make it
+				// difficult to establish the metro primary between e1,e2,e3.
+				// valid cases:
+				// 1. [e1,e2] [e3,e4]
+				// 2. [e1,e2] [w1,w2]
+				// 3. [e1,e2] [e1,e2']
+				return fmt.Errorf("zone list doesn't match in drpolicies with common managed clusters, drpolicies: %v %v", drpolicy.Name, drp.Name)
+			}
+
+		}
+	}
+
+	return nil
 }
 
 func validateS3Profiles(ctx context.Context, apiReader client.Reader,
