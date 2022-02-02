@@ -558,7 +558,7 @@ func (d *DRPCInstance) validateRelocation(preferredCluster string) (string, erro
 func (d *DRPCInstance) readyToSwitchOver(homeCluster string, preferredCluster string) bool {
 	d.log.Info("Checking whether VRG is available", "cluster", homeCluster)
 
-	if isMetroAction(d.drPolicy, homeCluster, preferredCluster) {
+	if d.instance.Spec.Action != rmn.ActionRelocate && isMetroAction(d.drPolicy, homeCluster, preferredCluster) {
 		// check fencing status in the preferredCluster
 		fenced, err := d.checkClusterFenced(preferredCluster)
 		if err != nil {
