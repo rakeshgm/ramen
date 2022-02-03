@@ -811,7 +811,8 @@ func getDRPCCondition(status *rmn.DRPlacementControlStatus, conditionType string
 	return -1, nil
 }
 
-func relocateToPreferredCluster(userPlacementRule *plrv1.PlacementRule, fromCluster, toCluster string) {
+func relocateToPreferredCluster(userPlacementRule *plrv1.PlacementRule, fromCluster string) {
+	toCluster := "east1-cluster"
 	setDRPCSpecExpectationTo(rmn.ActionRelocate, toCluster, fromCluster)
 
 	updateManifestWorkStatus(toCluster, "vrg", ocmworkv1.WorkApplied)
@@ -1000,7 +1001,7 @@ var _ = Describe("DRPlacementControl Reconciler", func() {
 			It("Should relocate to Primary (East1ManagedCluster)", func() {
 				// ----------------------------- RELOCATION TO PRIMARY --------------------------------------
 				By("\n\n*** Relocate - 1\n\n")
-				relocateToPreferredCluster(userPlacementRule, West1ManagedCluster, East1ManagedCluster)
+				relocateToPreferredCluster(userPlacementRule, West1ManagedCluster)
 				Expect(getManifestWorkCount(East1ManagedCluster)).Should(Equal(2)) // MWs for VRG+ROLES
 
 				drpc = getLatestDRPC()
@@ -1099,7 +1100,7 @@ var _ = Describe("DRPlacementControl Reconciler", func() {
 			It("Should relocate to Primary (East1ManagedCluster)", func() {
 				// ----------------------------- RELOCATION TO PRIMARY --------------------------------------
 				By("\n\n*** relocate 2\n\n")
-				relocateToPreferredCluster(userPlacementRule, West1ManagedCluster, East1ManagedCluster)
+				relocateToPreferredCluster(userPlacementRule, West1ManagedCluster)
 				Expect(getManifestWorkCount(East1ManagedCluster)).Should(Equal(2)) // MWs for VRG+ROLES
 				Expect(getManifestWorkCount(West1ManagedCluster)).Should(Equal(1)) // Roles MW
 
@@ -1169,7 +1170,7 @@ var _ = Describe("DRPlacementControl Reconciler", func() {
 			It("Should relocate to Primary (East1ManagedCluster)", func() {
 				// ----------------------------- RELOCATION TO PRIMARY FOR SYNC DR -------------------
 				By("\n\n*** relocate 2\n\n")
-				relocateToPreferredCluster(userPlacementRule, East2ManagedCluster, East1ManagedCluster)
+				relocateToPreferredCluster(userPlacementRule, East2ManagedCluster)
 				Expect(getManifestWorkCount(East1ManagedCluster)).Should(Equal(2)) // MWs for VRG+ROLES
 				Expect(getManifestWorkCount(East2ManagedCluster)).Should(Equal(1)) // Roles MW
 
@@ -1265,7 +1266,7 @@ var _ = Describe("DRPlacementControl Reconciler", func() {
 			It("Should relocate to Primary (East1ManagedCluster)", func() {
 				// ----------------------------- RELOCATION TO PRIMARY FOR SYNC DR------------------------
 				By("\n\n*** relocate 2\n\n")
-				relocateToPreferredCluster(userPlacementRule, East2ManagedCluster, East1ManagedCluster)
+				relocateToPreferredCluster(userPlacementRule, East2ManagedCluster)
 				Expect(getManifestWorkCount(East1ManagedCluster)).Should(Equal(2)) // MWs for VRG+ROLES
 				Expect(getManifestWorkCount(East2ManagedCluster)).Should(Equal(1)) // Roles MW
 
