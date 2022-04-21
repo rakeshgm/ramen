@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/go-logr/logr"
 
@@ -481,7 +482,7 @@ func (v *VRGInstance) restorePVs() error {
 	success, err := v.fetchAndRestorePV()
 
 	if !success {
-		errMsg := fmt.Sprintf("failed to restorePVs using profile list (%v)", v.instance.Spec.S3Profiles)
+		errMsg := fmt.Sprintf("failed to restorePVs using profile list (%v)", strings.Join(v.instance.Spec.S3Profiles, ", "))
 		v.log.Info(errMsg)
 
 		return fmt.Errorf("%s: %w", errMsg, err)
