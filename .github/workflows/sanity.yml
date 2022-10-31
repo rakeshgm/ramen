@@ -146,8 +146,8 @@ jobs:
         run: |
           make deploy
           kubectl get deployment -n ramen-system
-          kubectl -n ramen-system wait --for=condition=Available --timeout=60s deploy/ramen-hub-operator
-          kubectl -n ramen-system wait --for=condition=Available --timeout=60s deploy/ramen-dr-cluster-operator
+          kubectl -n ramen-system wait --for=condition=Available --timeout=120s deploy/ramen-hub-operator
+          kubectl -n ramen-system wait --for=condition=Available --timeout=120s deploy/ramen-dr-cluster-operator
 
       - name: Display failure logs
         if: ${{ failure() }}

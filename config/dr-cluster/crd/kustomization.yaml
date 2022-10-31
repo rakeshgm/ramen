@@ -11,6 +11,8 @@ patchesStrategicMerge:
 # patches here are for enabling the conversion webhook for each CRD
 #- patches/webhook_in_volumereplicationgroups.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
+- ../../crd/patches/webhook_in_drclusters.yaml
+- ../../crd/patches/cainjection_in_drclusters.yaml
 
 # [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.
 # patches here are for enabling the CA injection for each CRD
