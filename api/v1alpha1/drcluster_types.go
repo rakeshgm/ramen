@@ -18,6 +18,7 @@ const (
 	ClusterFenceStateManuallyUnfenced = ClusterFenceState("ManuallyUnfenced")
 )
 
+// region is used in drpolicy as well
 type Region string
 
 // DRClusterSpec defines the desired state of DRCluster
