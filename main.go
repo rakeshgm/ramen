@@ -136,6 +136,12 @@ func setupReconcilers(mgr ctrl.Manager, ramenConfig *ramendrv1alpha1.RamenConfig
 		setupLog.Error(err, "unable to create controller", "controller", "VolumeReplicationGroup")
 		os.Exit(1)
 	}
+
+	// setup webhook for DRPC
+	if err := (&ramendrv1alpha1.DRPlacementControl{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "DRPlacementControl")
+		os.Exit(1)
+	}
 }
 
 func setupReconcilersHub(mgr ctrl.Manager) {
