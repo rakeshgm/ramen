@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: The RamenDR authors
-# SPDX-License-Identifier: Apache-2.0
-
 domain: openshift.io
 layout:
 - go.kubebuilder.io/v3
@@ -39,6 +36,9 @@ resources:
   kind: DRPlacementControl
   path: github.com/ramendr/ramen/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
   controller: true
