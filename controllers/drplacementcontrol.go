@@ -124,6 +124,11 @@ func (d *DRPCInstance) RunInitialDeployment() (bool, error) {
 	deployed, clusterName := d.isDeployed(homeCluster)
 	if deployed && clusterName != homeCluster {
 		// IF deployed on cluster that is not the preferred HomeCluster, then we are done
+		// err := d.updateVRGUsingManifestWork(homeCluster)
+		// if err != nil {
+		// 	return !done, fmt.Errorf("error: {%w}", err)
+		// }
+
 		return done, nil
 	}
 
@@ -165,6 +170,31 @@ func (d *DRPCInstance) RunInitialDeployment() (bool, error) {
 	d.setActionDuration()
 
 	return done, nil
+}
+
+func (d *DRPCInstance) updateVRGUsingManifestWork(homeCluster string) error {
+	vrgDeployed, err := d.getVRGFromManifestWork(homeCluster)
+	if err != nil {
+		return fmt.Errorf("failed to get VRG From Manifestwork")
+	}
+
+	vrg := d.generateVRG(rmn.Primary)
+
+	if !reflect.DeepEqual(vrgDeployed, vrg) {
+		annotations := make(map[string]string)
+		annotations[DRPCNameAnnotation] = d.mwu.InstName
+		annotations[DRPCNamespaceAnnotation] = d.mwu.InstNamespace
+
+		if err := d.mwu.CreateOrUpdateVRGManifestWork(
+			d.instance.Name, d.instance.Namespace,
+			homeCluster, vrg, annotations); err != nil {
+			d.log.Error(err, "failed to update VolumeReplicationGroup manifest")
+			// ("failed to update VolumeReplicationGroup manifest in namespace %s (%w)", homeCluster, err)
+			return fmt.Errorf("faield to update VolumeReplicationGroup")
+		}
+	}
+
+	return nil
 }
 
 func (d *DRPCInstance) getHomeClusterForInitialDeploy() (string, string) {
