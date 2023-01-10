@@ -1337,13 +1337,15 @@ func (d *DRPCInstance) EnsureCleanup(clusterToSkip string) error {
 	// IFF we have VolSync PVCs, then no need to clean up
 	homeCluster := clusterToSkip
 
-	repReq, err := d.IsVolSyncReplicationRequired(homeCluster)
+	volSyncRepReq, err := d.IsVolSyncReplicationRequired(homeCluster)
 	if err != nil {
 		return fmt.Errorf("failed to check if VolSync replication is required (%w)", err)
 	}
 
-	if repReq {
-		return d.cleanupForVolSync(clusterToSkip)
+	isMetroDR, _ := dRPolicySupportsMetro(d.drPolicy, d.drClusters)
+
+	if volSyncRepReq || isMetroDR {
+		return d.cleanupForVolSyncAndMetroDR(clusterToSkip)
 	}
 
 	clean, err := d.cleanupSecondaries(clusterToSkip)
@@ -1368,8 +1370,8 @@ func (d *DRPCInstance) EnsureCleanup(clusterToSkip string) error {
 	return nil
 }
 
-func (d *DRPCInstance) cleanupForVolSync(clusterToSkip string) error {
-	d.log.Info("VolSync needs both VRGs. No need to clean up secondary")
+func (d *DRPCInstance) cleanupForVolSyncAndMetroDR(clusterToSkip string) error {
+	d.log.Info("VolSync and MetroDR needs both VRGs. No need to clean up secondary")
 	d.log.Info("Ensure secondary on peer")
 
 	peersReady := true
