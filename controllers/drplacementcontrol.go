@@ -762,6 +762,12 @@ func (d *DRPCInstance) readyToSwitchOver(homeCluster string, preferredCluster st
 
 			return false
 		}
+
+		if !fenced {
+			d.log.Info(fmt.Sprintf("Fenced Conditions on %s not met or found", preferredCluster))
+
+			return false
+		}
 	}
 	// Allow switch over when PV data is protected and the cluster data is protected
 	return d.isVRGConditionMet(homeCluster, VRGConditionTypeDataReady) &&
