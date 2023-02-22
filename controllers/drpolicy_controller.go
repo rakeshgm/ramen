@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -123,6 +124,16 @@ func (r *DRPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := drPolicyDeploy(drpolicy, drclusters, secretsUtil, ramenConfig); err != nil {
 		return ctrl.Result{}, fmt.Errorf("drpolicy deploy: %w", u.validatedSetFalse("DrClustersDeployFailed", err))
 	}
+
+	metric := NewDRPolicySyncIntervalMetrics(prometheus.Labels{
+		"policyname": drpolicy.Name,
+	})
+	val, err := util.GetSecondsFromSchedulingInterval(drpolicy)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("unable to convert scheduling interval to seconds: %w", err)
+	}
+	log.Info(fmt.Sprintf("Setting metric: (%v)", DRPolicySyncIntervalSeconds))
+	metric.DRPolicySyncInterval.Set(val)
 
 	return ctrl.Result{}, u.validatedSetTrue("Succeeded", "drpolicy validated")
 }
