@@ -25,17 +25,25 @@ type DRPolicySyncMetrics struct {
 	DRPolicySyncInterval prometheus.Gauge
 }
 
+const (
+	ObjType               = "obj_type"
+	ObjName               = "obj_name"
+	ObjNamespace          = "obj_namespace"
+	ObjPolicyname         = "obj_policyname"
+	ObjSchedulingInterval = "obj_scheduling_interval"
+)
+
 var (
 	syncMetricLabels = []string{
-		"resource_type",       // Name of the type of the resource [drpc|vrg]
-		"name",                // Name of the resource [drpc-name|vrg-name]
-		"namespace",           // DRPC namespace name
-		"policyname",          // DRPolicy name
-		"scheduling_interval", // Value from DRPolicy
+		ObjType,               // Name of the type of the resource [drpc|vrg]
+		ObjName,               // Name of the resource [drpc-name|vrg-name]
+		ObjNamespace,          // DRPC namespace name
+		ObjPolicyname,         // DRPolicy name
+		ObjSchedulingInterval, // Value from DRPolicy
 	}
 
 	drpolicySyncIntervalMetricLabels = []string{
-		"policyname", // DRPolicy name
+		ObjPolicyname, // DRPolicy name
 	}
 )
 
