@@ -124,6 +124,12 @@ func (r *DRClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("drclusters deploy: %w", u.validatedSetFalseAndUpdate("DrClustersDeployFailed", err))
 	}
 
+	
+	deployed := u.getDRClusterDeployedStatus(drcluster)
+	if !deployed{
+		return ctrl.Result{}, fmt.Errorf("drcluster deploy failed")
+	}
+
 	if err = validateCIDRsFormat(drcluster, log); err != nil {
 		return ctrl.Result{}, fmt.Errorf("drclusters CIDRs validate: %w",
 			u.validatedSetFalseAndUpdate(ReasonValidationFailed, err))
@@ -163,6 +169,16 @@ func (u *drclusterInstance) initializeStatus() {
 		setDRClusterInitialCondition(&u.object.Status.Conditions, u.object.Generation, msg)
 		u.setDRClusterPhase(ramen.Starting)
 	}
+}
+
+func (u *drclusterInstance) getDRClusterDeployedStatus(drcluster *ramen.DRCluster) bool {
+	mw, err := u.mwUtil.GetDrClusterManifestWork(drcluster.Name)
+	if err != nil {
+		u.log.Info(fmt.Sprintf("error in fetching DRCluster manifest work: %v", err))
+		return false
+	}
+	return util.IsManifestInAppliedState(mw)
+
 }
 
 func validateS3Profile(ctx context.Context, apiReader client.Reader,
