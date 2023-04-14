@@ -393,9 +393,14 @@ endif
 .PHONY: docker-buildx
 docker-buildx: # test ## Build and push docker image for the manager for cross-platform support
 ifeq ($(DOCKERCMD),docker)
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} and 
+	# replace GOARCH value to ${TARGETARCH} into Dockerfile.cross, and preserve the original Dockerfile
 	$(eval PLATFORMS="linux/arm64,linux/amd64,linux/s390x,linux/ppc64le")
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	$(SED_CMD) -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
+	$(SED_CMD) \
+		-e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' \
+		-e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' \
+		Dockerfile > Dockerfile.cross
+	$(SED_CMD) -i -e 's/GOARCH=amd64/GOARCH=$${TARGETARCH}/' Dockerfile.cross
 	- $(DOCKERCMD) buildx create --name $(IMAGE_NAME)-builder --bootstrap --use 
 	- $(DOCKERCMD) buildx build --push --platform="${PLATFORMS}" --tag ${IMG} -f Dockerfile.cross .
 	- $(DOCKERCMD) buildx rm $(IMAGE_NAME)-builder
