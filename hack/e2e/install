@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -ex
+
+# setup GO
+GOVER="go1.19.8"
+# download go
+wget https://go.dev/dl/"$GOVER".linux-amd64.tar.gz
+# install go
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf "$GOVER".linux-amd64.tar.gz
+sudo rm -rf "$GOVER.linux-amd64.tar.gz"
+# Add /usr/local/go/bin to the PATH environment variable
+export PATH=$PATH:/usr/local/go/bin
+
+echo "$(go version)"
+echo "$(which go)"
+
+# install make 
+sudo dnf install -y make gcc
