@@ -356,12 +356,22 @@ var _ = Describe("DRClusterController", func() {
 				drclusterConditionExpectEventually(drcluster, false, metav1.ConditionFalse, Equal("s3ConnectionFailed"), Ignore(),
 					ramen.DRClusterValidated)
 			})
+			It("is successful", func() {
+				drpolicyDelete(syncDRPolicy)
+				drclusterDelete(drcluster)
+
+				createPolicies()
+				drcluster = drclusters[0].DeepCopy()
+			})
+		
 		})
+
 		When("an S3Profile fails listing", func() {
 			It("reports NOT validated with reason s3ListFailed", func() {
 				By("modifying a DRCluster with an invalid S3Profile that fails listing")
 				drcluster.Spec.S3ProfileName = s3Profiles[4].S3ProfileName
-				drcluster = updateDRClusterParameters(drcluster)
+				Expect(k8sClient.Create(context.TODO(), drcluster)).To(Succeed())
+				updateDRClusterManifestWorkStatus(drcluster.Name)
 				drclusterConditionExpectEventually(drcluster, false, metav1.ConditionFalse, Equal("s3ListFailed"), Ignore(),
 					ramen.DRClusterValidated)
 			})

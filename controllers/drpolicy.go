@@ -111,10 +111,10 @@ func drClustersUndeploySecrets(
 	}
 
 	// Determine S3 secrets that maybe deleted, based on policy being deleted
-	mayDeleteS3Secrets, err := drPolicySecretNames(drpolicy, drclusters, ramenConfig)
-	if err != nil {
-		return err
-	}
+	mayDeleteS3Secrets, _ := drPolicySecretNames(drpolicy, drclusters, ramenConfig)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// For each cluster in the must have S3 secrets list, check and delete
 	// S3Profiles that maybe deleted, iff absent in the must have list
