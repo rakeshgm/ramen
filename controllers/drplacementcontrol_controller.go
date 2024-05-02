@@ -736,7 +736,7 @@ func (r *DRPlacementControlReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			logger.Info(fmt.Sprintf("Error in deleting DRPC: (%v)", err))
 
-			statusErr := r.setProgressionAndUpdate(ctx, drpc, rmn.ProgressionDeleting)
+			statusErr := r.setDeletionStatusAndUpdate(ctx, drpc)
 			if statusErr != nil {
 				err = fmt.Errorf("drpc deletion failed: %w and status update failed: %w", err, statusErr)
 			}
@@ -808,16 +808,19 @@ func (r *DRPlacementControlReconciler) Reconcile(ctx context.Context, req ctrl.R
 	return r.reconcileDRPCInstance(d, logger)
 }
 
-func (r *DRPlacementControlReconciler) setProgressionAndUpdate(
-	ctx context.Context, drpc *rmn.DRPlacementControl, progressionStatus rmn.ProgressionStatus,
+func (r *DRPlacementControlReconciler) setDeletionStatusAndUpdate(
+	ctx context.Context, drpc *rmn.DRPlacementControl,
 ) error {
-	updated := updateDRPCProgression(drpc, progressionStatus, r.Log)
+	updated := updateDRPCProgression(drpc, rmn.ProgressionDeleting, r.Log)
+	drpc.Status.Phase = rmn.Deleting
 
 	if updated {
 		if err := r.Status().Update(ctx, drpc); err != nil {
 			return fmt.Errorf("failed to update DRPC status: (%w)", err)
 		}
 	}
+
+	updateDRPCProgression(drpc, rmn.ProgressionDeleted, r.Log)
 
 	return nil
 }
