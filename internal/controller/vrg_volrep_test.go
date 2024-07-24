@@ -252,6 +252,79 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 		})
 	})
 
+	// provisioner match. But schedule does not match. Again,
+	// VolumeReplication resource should not be created.
+	var vrgSchedule2Tests []*vrgTest
+	vrgScheduleTest2Template := &template{
+		ClaimBindInfo:        corev1.ClaimBound,
+		VolumeBindInfo:       corev1.VolumeBound,
+		schedulingInterval:   "22h",
+		storageClassName:     "manual",
+		replicationClassName: "test-replicationclass",
+		vrcProvisioner:       "manual.storage.com",
+		scProvisioner:        "manual.storage.com",
+	}
+	Context("schedule tests schedule does not match", func() {
+		It("sets up non-bound PVCs, PVs and then bind them", func() {
+			vrgScheduleTest2Template.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
+			storageIDLabel := genStorageIDLabel(storageIDs[0])
+			storageID := storageIDLabel[vrgController.StorageIDLabel]
+			vrgScheduleTest2Template.replicationClassLabels = genVRCLabels(replicationIDs[0], storageID, "ramen")
+			vrgScheduleTest2Template.storageIDLabels = storageIDLabel
+			v := newVRGTestCaseCreateAndStart(4, vrgScheduleTest2Template, true, true)
+			vrgSchedule2Tests = append(vrgSchedule2Tests, v)
+		})
+		It("expect no VR to be created as PVC not bound and check status", func() {
+			v := vrgSchedule2Tests[0]
+			v.waitForVRCountToMatch(0)
+		})
+		It("waits for VRG status to match", func() {
+			v := vrgSchedule2Tests[0]
+			v.verifyVRGStatusExpectation(false, "")
+		})
+		// It("protects kube objects", func() { kubeObjectProtectionValidate(vrgSchedule2Tests) })
+		It("cleans up after testing", func() {
+			v := vrgSchedule2Tests[0]
+			v.cleanupStatusAbsent()
+		})
+	})
+
+	// provisioner and schedule match. But replicationClass
+	// does not have the labels that VRG expects to find.
+	var vrgSchedule3Tests []*vrgTest
+	vrgScheduleTest3Template := &template{
+		ClaimBindInfo:          corev1.ClaimBound,
+		VolumeBindInfo:         corev1.VolumeBound,
+		schedulingInterval:     "1h",
+		storageClassName:       "manual",
+		replicationClassName:   "test-replicationclass",
+		vrcProvisioner:         "manual.storage.com",
+		scProvisioner:          "manual.storage.com",
+		replicationClassLabels: map[string]string{},
+	}
+	Context("schedule tests replicationclass does not have labels", func() {
+		It("sets up non-bound PVCs, PVs and then bind them", func() {
+			vrgScheduleTest3Template.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
+			storageIDLabel := genStorageIDLabel(storageIDs[0])
+			vrgScheduleTest3Template.storageIDLabels = storageIDLabel
+			v := newVRGTestCaseCreateAndStart(4, vrgScheduleTest3Template, true, true)
+			vrgSchedule3Tests = append(vrgSchedule3Tests, v)
+		})
+		It("expect no VR to be created as VR not created and check status", func() {
+			v := vrgSchedule3Tests[0]
+			v.waitForVRCountToMatch(0)
+		})
+		It("waits for VRG status to match", func() {
+			v := vrgSchedule3Tests[0]
+			v.verifyVRGStatusExpectation(false, "")
+		})
+		// It("protects kube objects", func() { kubeObjectProtectionValidate(vrgSchedule3Tests) })
+		It("cleans up after testing", func() {
+			v := vrgSchedule3Tests[0]
+			v.cleanupStatusAbsent()
+		})
+	})
+
 	// Test first restore
 	Context("restore test case", func() {
 		storageIDLabel := genStorageIDLabel(storageIDs[0])
@@ -1032,79 +1105,6 @@ var _ = Describe("VolumeReplicationGroupVolRepController", func() {
 		// It("protects kube objects", func() { kubeObjectProtectionValidate(vrgScheduleTests) })
 		It("cleans up after testing", func() {
 			v := vrgScheduleTests[0]
-			v.cleanupStatusAbsent()
-		})
-	})
-
-	// provisioner match. But schedule does not match. Again,
-	// VolumeReplication resource should not be created.
-	var vrgSchedule2Tests []*vrgTest
-	vrgScheduleTest2Template := &template{
-		ClaimBindInfo:        corev1.ClaimBound,
-		VolumeBindInfo:       corev1.VolumeBound,
-		schedulingInterval:   "22h",
-		storageClassName:     "manual",
-		replicationClassName: "test-replicationclass",
-		vrcProvisioner:       "manual.storage.com",
-		scProvisioner:        "manual.storage.com",
-	}
-	Context("schedule tests schedule does not match", func() {
-		It("sets up non-bound PVCs, PVs and then bind them", func() {
-			vrgScheduleTest2Template.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
-			storageIDLabel := genStorageIDLabel(storageIDs[0])
-			storageID := storageIDLabel[vrgController.StorageIDLabel]
-			vrgScheduleTest2Template.replicationClassLabels = genVRCLabels(replicationIDs[0], storageID, "ramen")
-			vrgScheduleTest2Template.storageIDLabels = storageIDLabel
-			v := newVRGTestCaseCreateAndStart(4, vrgScheduleTest2Template, true, true)
-			vrgSchedule2Tests = append(vrgSchedule2Tests, v)
-		})
-		It("expect no VR to be created as PVC not bound and check status", func() {
-			v := vrgSchedule2Tests[0]
-			v.waitForVRCountToMatch(0)
-		})
-		It("waits for VRG status to match", func() {
-			v := vrgSchedule2Tests[0]
-			v.verifyVRGStatusExpectation(false, "")
-		})
-		// It("protects kube objects", func() { kubeObjectProtectionValidate(vrgSchedule2Tests) })
-		It("cleans up after testing", func() {
-			v := vrgSchedule2Tests[0]
-			v.cleanupStatusAbsent()
-		})
-	})
-
-	// provisioner and schedule match. But replicationClass
-	// does not have the labels that VRG expects to find.
-	var vrgSchedule3Tests []*vrgTest
-	vrgScheduleTest3Template := &template{
-		ClaimBindInfo:          corev1.ClaimBound,
-		VolumeBindInfo:         corev1.VolumeBound,
-		schedulingInterval:     "1h",
-		storageClassName:       "manual",
-		replicationClassName:   "test-replicationclass",
-		vrcProvisioner:         "manual.storage.com",
-		scProvisioner:          "manual.storage.com",
-		replicationClassLabels: map[string]string{},
-	}
-	Context("schedule tests replicationclass does not have labels", func() {
-		It("sets up non-bound PVCs, PVs and then bind them", func() {
-			vrgScheduleTest3Template.s3Profiles = []string{s3Profiles[vrgS3ProfileNumber].S3ProfileName}
-			storageIDLabel := genStorageIDLabel(storageIDs[0])
-			vrgScheduleTest3Template.storageIDLabels = storageIDLabel
-			v := newVRGTestCaseCreateAndStart(4, vrgScheduleTest3Template, true, true)
-			vrgSchedule3Tests = append(vrgSchedule3Tests, v)
-		})
-		It("expect no VR to be created as VR not created and check status", func() {
-			v := vrgSchedule3Tests[0]
-			v.waitForVRCountToMatch(0)
-		})
-		It("waits for VRG status to match", func() {
-			v := vrgSchedule3Tests[0]
-			v.verifyVRGStatusExpectation(false, "")
-		})
-		// It("protects kube objects", func() { kubeObjectProtectionValidate(vrgSchedule3Tests) })
-		It("cleans up after testing", func() {
-			v := vrgSchedule3Tests[0]
 			v.cleanupStatusAbsent()
 		})
 	})
