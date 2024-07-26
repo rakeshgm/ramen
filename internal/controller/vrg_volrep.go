@@ -1258,6 +1258,11 @@ func (v *VRGInstance) selectVolumeReplicationClass(
 			namespacedName, err)
 	}
 
+	sID, found := storageClass.GetLabels()[StorageIDLabel]
+	if !found {
+		return nil, fmt.Errorf("missing storageID label in storageclass of pvc %s", namespacedName)
+	}
+
 	matchingReplicationClassList := []*volrep.VolumeReplicationClass{}
 
 	for index := range v.replClassList.Items {
@@ -1270,9 +1275,20 @@ func (v *VRGInstance) selectVolumeReplicationClass(
 		}
 
 		// ReplicationClass that matches both VRG schedule and pvc provisioner
-		if schedulingInterval == v.instance.Spec.Async.SchedulingInterval {
-			matchingReplicationClassList = append(matchingReplicationClassList, replicationClass)
+		if schedulingInterval != v.instance.Spec.Async.SchedulingInterval {
+			continue
 		}
+
+		replicationID, exists := replicationClass.GetLabels()[StorageIDLabel]
+		if !exists {
+			continue
+		}
+
+		if replicationID != sID {
+			continue
+		}
+
+		matchingReplicationClassList = append(matchingReplicationClassList, replicationClass)
 	}
 
 	switch len(matchingReplicationClassList) {
