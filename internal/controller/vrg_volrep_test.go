@@ -40,6 +40,12 @@ const (
 	namespaceLen = 5
 )
 
+const (
+	controllerExpandSecretName = "rook-csi-rbd-provisioner"
+	nodeStageSecretName        = "rook-csi-rbd-node"
+	nodePublishSecretName      = "publish-secret-name"
+)
+
 var vrgObjectStorer = &objectStorers[vrgS3ProfileNumber]
 
 func init() {
@@ -1460,6 +1466,17 @@ func (v *vrgTest) generateFakePVs(pvNamePrefix string, count int) []corev1.Persi
 	return pvList
 }
 
+func (v *vrgTest) populatePVSecerts(pvList *[]corev1.PersistentVolume, count int) *[]corev1.PersistentVolume {
+
+	for _, pv := range *pvList {
+		pv.Spec.CSI.ControllerExpandSecretRef = secretRef(controllerExpandSecretName, pv.Namespace)
+		pv.Spec.CSI.NodeStageSecretRef = secretRef(nodeStageSecretName, pv.Namespace)
+		pv.Spec.CSI.NodePublishSecretRef = secretRef(nodePublishSecretName, pv.Namespace)
+	}
+
+	return pvList
+}
+
 func (v *vrgTest) generateFakePVCs(pvList []corev1.PersistentVolume) []corev1.PersistentVolumeClaim {
 	pvcList := []corev1.PersistentVolumeClaim{}
 
@@ -2650,4 +2667,11 @@ func (v *vrgTest) waitForVRGStateToTransitionToPrimary() {
 	Eventually(func() bool {
 		return v.getVRG().Status.State == ramendrv1alpha1.PrimaryState
 	}, timeout, interval).Should(BeTrue())
+}
+
+func secretRef(secretName string, namespace string) *corev1.SecretReference {
+	return &corev1.SecretReference{
+		Name:      secretName,
+		Namespace: namespace,
+	}
 }
