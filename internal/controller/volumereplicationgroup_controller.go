@@ -873,16 +873,18 @@ func (v *VRGInstance) separatePVCUsingPeerClassAndSC(peerClasses []ramendrv1alph
 	pvcEnabledForVolSync := util.IsPVCMarkedForVolSync(v.instance.GetAnnotations())
 
 	if !pvcEnabledForVolSync {
-		if peerClass.ReplicationID != "" {
-			replicationClass := v.findReplicationClassUsingPeerClass(peerClass, storageClass)
-			if replicationClass != nil {
-				v.volRepPVCs = append(v.volRepPVCs, *pvc)
-
-				return nil
-			}
-
-			return fmt.Errorf("failed to find matching peerClass for PVC") // TODO: better error message
+		if peerClass.ReplicationID == "" {
+			return fmt.Errorf("replicationID not found in peerClass")
 		}
+
+		replicationClass := v.findReplicationClassUsingPeerClass(peerClass, storageClass)
+		if replicationClass != nil {
+			v.volRepPVCs = append(v.volRepPVCs, *pvc)
+
+			return nil
+		}
+
+		return fmt.Errorf("failed to find matching peerClass for PVC") // TODO: better error message
 	}
 
 	if v.instance.Spec.VolSync.Disabled {
