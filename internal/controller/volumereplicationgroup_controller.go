@@ -871,6 +871,10 @@ func (v *VRGInstance) separatePVCUsingPeerClassAndSC(peerClasses []ramendrv1alph
 		return errors.New(msg)
 	}
 
+	msg := fmt.Sprintf("info from peerClass; storageClassName: %s, replicationID: %s, storageids: %s, clusterIDs: %s",
+		peerClass.StorageClassName, peerClass.ReplicationID, peerClass.StorageID, peerClass.ClusterIDs)
+	v.log.Info(msg)
+
 	pvcEnabledForVolSync := util.IsPVCMarkedForVolSync(v.instance.GetAnnotations())
 
 	if !pvcEnabledForVolSync {
