@@ -6,5 +6,4 @@ namespace: drenv-addon-test
 
 resources:
 - namespace.yaml
-- pvc.yaml
 - snapshot.yaml

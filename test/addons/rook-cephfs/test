@@ -6,19 +6,24 @@
 import os
 import sys
 
+import drenv
 from drenv import kubectl
 
 PVC_NAME = "cephfs-pvc"
 SNAP_NAME = "cephfs-snap"
 NAMESPACE = "drenv-addon-test"
+FILE_SYSTEMS = ["test-fs1", "test-fs2"]
 
 
 def test_provisioning(cluster):
-    print(f"Deploying pvc and snapshot on cluster '{cluster}'")
+    print(f"Deploying snapshot and creating namespace on cluster '{cluster}'")
+    kubectl.apply("--kustomize", "provision-test", context=cluster)
+
+    print(f"Creating PVC {PVC_NAME} on cluster '{cluster}")
+    template = drenv.template("provision-test/pvc.yaml")
+    yaml = template.substitute(fsname=FILE_SYSTEMS[0])
     kubectl.apply(
-        "--kustomize",
-        "provision-test",
-        context=cluster,
+        f"--namespace={NAMESPACE}", "--filename=-", input=yaml, context=cluster
     )
 
     print(f"Waiting until pvc {PVC_NAME} is bound in cluster '{cluster}'")
