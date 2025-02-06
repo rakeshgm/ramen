@@ -8,7 +8,8 @@ import (
 	"fmt"
 
 	volsyncv1alpha1 "github.com/backube/volsync/api/v1alpha1"
-	vgsv1alphfa1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1alpha1"
+	// vgsv1beta1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1alpha1"
+	vgsv1beta1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta1"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -59,7 +60,7 @@ var _ = Describe("Volumegroupsourcehandler", func() {
 			err := volumeGroupSourceHandler.CreateOrUpdateVolumeGroupSnapshot(context.TODO(), rgs)
 			Expect(err).To(BeNil())
 			Eventually(func() []string {
-				volumeGroupSnapshot := &vgsv1alphfa1.VolumeGroupSnapshot{}
+				volumeGroupSnapshot := &vgsv1beta1.VolumeGroupSnapshot{}
 
 				err := k8sClient.Get(
 					context.TODO(), types.NamespacedName{
@@ -253,7 +254,7 @@ func GenerateReplicationGroupSource(
 
 func UpdateVGS(rgs *v1alpha1.ReplicationGroupSource, vsName, pvcName string) {
 	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		volumeGroupSnapshot := &vgsv1alphfa1.VolumeGroupSnapshot{}
+		volumeGroupSnapshot := &vgsv1beta1.VolumeGroupSnapshot{}
 
 		err := k8sClient.Get(context.TODO(), types.NamespacedName{
 			Name:      fmt.Sprintf(cephfscg.VolumeGroupSnapshotNameFormat, rgs.Name),
@@ -264,9 +265,9 @@ func UpdateVGS(rgs *v1alpha1.ReplicationGroupSource, vsName, pvcName string) {
 		}
 
 		ready := true
-		volumeGroupSnapshot.Status = &vgsv1alphfa1.VolumeGroupSnapshotStatus{
+		volumeGroupSnapshot.Status = &vgsv1beta1.VolumeGroupSnapshotStatus{
 			ReadyToUse: &ready,
-			PVCVolumeSnapshotRefList: []vgsv1alphfa1.PVCVolumeSnapshotPair{{
+			PVCVolumeSnapshotRefList: []vgsv1beta1.PVCVolumeSnapshotPair{{
 				VolumeSnapshotRef:        corev1.LocalObjectReference{Name: vsName},
 				PersistentVolumeClaimRef: corev1.LocalObjectReference{Name: pvcName},
 			}},

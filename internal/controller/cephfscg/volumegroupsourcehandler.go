@@ -10,7 +10,8 @@ import (
 
 	volsyncv1alpha1 "github.com/backube/volsync/api/v1alpha1"
 	"github.com/go-logr/logr"
-	vgsv1alphfa1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1alpha1"
+
+	vgsv1beta1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta1"
 	vsv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	ramendrv1alpha1 "github.com/ramendr/ramen/api/v1alpha1"
 	"github.com/ramendr/ramen/internal/controller/util"
@@ -110,7 +111,7 @@ func (h *volumeGroupSourceHandler) CreateOrUpdateVolumeGroupSnapshot(
 	logger := h.Logger.WithName("CreateOrUpdateVolumeGroupSnapshot")
 	logger.Info("Create or update volume group snapshot")
 
-	volumeGroupSnapshot := &vgsv1alphfa1.VolumeGroupSnapshot{
+	volumeGroupSnapshot := &vgsv1beta1.VolumeGroupSnapshot{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: h.VolumeGroupSnapshotNamespace,
 			Name:      h.VolumeGroupSnapshotName,
@@ -155,7 +156,7 @@ func (h *volumeGroupSourceHandler) CleanVolumeGroupSnapshot(
 	logger := h.Logger.WithName("CleanVolumeGroupSnapshot")
 	logger.Info("Get volume group snapshot")
 
-	volumeGroupSnapshot := &vgsv1alphfa1.VolumeGroupSnapshot{}
+	volumeGroupSnapshot := &vgsv1beta1.VolumeGroupSnapshot{}
 	if err := h.Client.Get(ctx, types.NamespacedName{
 		Name: h.VolumeGroupSnapshotName, Namespace: h.VolumeGroupSnapshotNamespace,
 	}, volumeGroupSnapshot); err != nil {
@@ -221,7 +222,7 @@ func (h *volumeGroupSourceHandler) RestoreVolumesFromVolumeGroupSnapshot(
 	logger := h.Logger.WithName("RestoreVolumesFromVolumeGroupSnapshot")
 	logger.Info("Get volume group snapshot")
 
-	volumeGroupSnapshot := &vgsv1alphfa1.VolumeGroupSnapshot{}
+	volumeGroupSnapshot := &vgsv1beta1.VolumeGroupSnapshot{}
 	if err := h.Client.Get(ctx,
 		types.NamespacedName{Name: h.VolumeGroupSnapshotName, Namespace: h.VolumeGroupSnapshotNamespace},
 		volumeGroupSnapshot); err != nil {
