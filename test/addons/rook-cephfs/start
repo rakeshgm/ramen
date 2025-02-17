@@ -26,7 +26,7 @@ def deploy(cluster):
 
     print("Creating SnapshotClass")
     template = drenv.template("snapshot-class.yaml")
-    yaml = template.substitute(cluster=cluster)
+    yaml = template.substitute(cluster=cluster, fsname=FILE_SYSTEMS[0])
     kubectl.apply("--filename=-", input=yaml, context=cluster)
 
 
