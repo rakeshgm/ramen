@@ -31,7 +31,6 @@ var _ = Describe("DRCluster-CEL", func() {
 				},
 				Spec: ramen.DRClusterSpec{
 					S3ProfileName: s3Profiles[0],
-					Region:        "east",
 				},
 			},
 			ramen.DRCluster{
@@ -40,7 +39,6 @@ var _ = Describe("DRCluster-CEL", func() {
 				},
 				Spec: ramen.DRClusterSpec{
 					S3ProfileName: s3Profiles[1],
-					Region:        "east",
 				},
 			},
 		)
@@ -88,16 +86,6 @@ var _ = Describe("DRCluster-CEL", func() {
 			drc := drclusters[0].DeepCopy()
 			createDRCluster(drc)
 			drc.Spec.S3ProfileName = "new-profile"
-			Expect(k8sClient.Update(context.TODO(), drc)).NotTo(Succeed())
-			drclusterDelete(drc)
-		})
-	})
-
-	When("a valid DRCluster is created", func() {
-		It("should not update on modifying Region field", func() {
-			drc := drclusters[0].DeepCopy()
-			createDRCluster(drc)
-			drc.Spec.Region = "new-region"
 			Expect(k8sClient.Update(context.TODO(), drc)).NotTo(Succeed())
 			drclusterDelete(drc)
 		})

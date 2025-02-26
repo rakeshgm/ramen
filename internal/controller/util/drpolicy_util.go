@@ -26,28 +26,6 @@ func DRPolicyClusterNamesAsASet(drpolicy *rmn.DRPolicy) sets.String {
 	return sets.NewString(DRPolicyClusterNames(drpolicy)...)
 }
 
-func DrpolicyRegionNames(drpolicy *rmn.DRPolicy, drClusters []rmn.DRCluster) []string {
-	regionNames := make([]string, len(DRPolicyClusterNames(drpolicy)))
-
-	for i, v := range DRPolicyClusterNames(drpolicy) {
-		regionName := ""
-
-		for _, drCluster := range drClusters {
-			if drCluster.Name == v {
-				regionName = string(drCluster.Spec.Region)
-			}
-		}
-
-		regionNames[i] = regionName
-	}
-
-	return regionNames
-}
-
-func DrpolicyRegionNamesAsASet(drpolicy *rmn.DRPolicy, drClusters []rmn.DRCluster) sets.String {
-	return sets.NewString(DrpolicyRegionNames(drpolicy, drClusters)...)
-}
-
 func DrpolicyValidated(drpolicy *rmn.DRPolicy) error {
 	// TODO: What if the DRPolicy is deleted!
 	// A deleted DRPolicy should not be applied to a new DRPC

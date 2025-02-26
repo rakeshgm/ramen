@@ -128,7 +128,6 @@ var _ = Describe("DRClusterController", func() {
 				Spec: ramen.DRClusterSpec{
 					S3ProfileName: s3Profiles[0].S3ProfileName,
 					CIDRs:         cidrs[0],
-					Region:        "east",
 				},
 			},
 			ramen.DRCluster{
@@ -144,7 +143,6 @@ var _ = Describe("DRClusterController", func() {
 				Spec: ramen.DRClusterSpec{
 					S3ProfileName: s3Profiles[0].S3ProfileName,
 					CIDRs:         cidrs[2],
-					Region:        "east",
 				},
 			},
 		)

@@ -275,11 +275,10 @@ var _ = Describe("DRClusterMModeTests", Ordered, func() {
 		// Initialize --- DRCluster
 		drCluster1 = &rmn.DRCluster{
 			ObjectMeta: metav1.ObjectMeta{Name: "drcluster1"},
-			Spec:       rmn.DRClusterSpec{S3ProfileName: "fake", Region: "east"},
+			Spec:       rmn.DRClusterSpec{S3ProfileName: "fake"},
 		}
 		drCluster2 = drCluster1.DeepCopy()
 		drCluster2.ObjectMeta.Name = "drcluster2"
-		drCluster2.Spec.Region = "west"
 
 		Expect(k8sClient.Create(context.TODO(), drCluster1)).To(Succeed())
 		updateDRClusterManifestWorkStatus(k8sClient, k8sManager.GetAPIReader(), drCluster1.GetName())

@@ -89,7 +89,6 @@ var _ = Describe("DRPCPredicateDRCluster", func() {
 
 		When("new has unrelated changes", func() {
 			It("returns DRCluster update of interest as false", func() {
-				drClusterNew.Spec.Region = "testing"
 				Expect(controllers.DRClusterUpdateOfInterest(drClusterOld, drClusterNew)).To(BeFalse())
 			})
 		})
@@ -268,27 +267,21 @@ var _ = Describe("DRPCPredicateDRCluster", func() {
 			// Referenced in policies
 			drCluster1 = drClusterNew.DeepCopy()
 			drCluster1.ObjectMeta.Name = "drcluster1"
-			drCluster1.Spec.Region = "east1"
 
 			drCluster2 = drClusterNew.DeepCopy()
 			drCluster2.ObjectMeta.Name = "drcluster2"
-			drCluster2.Spec.Region = "east2"
 
 			drCluster3 = drClusterNew.DeepCopy()
 			drCluster3.ObjectMeta.Name = "drcluster3"
-			drCluster3.Spec.Region = "east3"
 
 			drCluster4 = drClusterNew.DeepCopy()
 			drCluster4.ObjectMeta.Name = "drcluster4"
-			drCluster4.Spec.Region = "east4"
 
 			drCluster5 = drClusterNew.DeepCopy()
 			drCluster5.ObjectMeta.Name = "drcluster5"
-			drCluster5.Spec.Region = "east5"
 
 			drCluster6 = drClusterNew.DeepCopy()
 			drCluster6.ObjectMeta.Name = "drcluster6"
-			drCluster5.Spec.Region = "east6"
 
 			Expect(k8sClient.Create(context.TODO(), drCluster1)).To(Succeed())
 			Expect(k8sClient.Create(context.TODO(), drCluster2)).To(Succeed())

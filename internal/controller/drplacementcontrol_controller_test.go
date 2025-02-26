@@ -892,7 +892,7 @@ func populateDRClusters() {
 				"drcluster.ramendr.openshift.io/storage-clusterid":        "tmp",
 				"drcluster.ramendr.openshift.io/storage-driver":           "tmp.storage.com",
 			}},
-			Spec: rmn.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "east", CIDRs: cidrs[0]},
+			Spec: rmn.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, CIDRs: cidrs[0]},
 		},
 		rmn.DRCluster{
 			ObjectMeta: metav1.ObjectMeta{Name: West1ManagedCluster, Annotations: map[string]string{
@@ -901,7 +901,7 @@ func populateDRClusters() {
 				"drcluster.ramendr.openshift.io/storage-clusterid":        "tmp2",
 				"drcluster.ramendr.openshift.io/storage-driver":           "tmp2.storage.com",
 			}},
-			Spec: rmn.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "west"},
+			Spec: rmn.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
 		},
 		rmn.DRCluster{
 			ObjectMeta: metav1.ObjectMeta{Name: East2ManagedCluster, Annotations: map[string]string{
@@ -910,7 +910,7 @@ func populateDRClusters() {
 				"drcluster.ramendr.openshift.io/storage-clusterid":        "tmp",
 				"drcluster.ramendr.openshift.io/storage-driver":           "tmp.storage.com",
 			}},
-			Spec: rmn.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "east", CIDRs: cidrs[1]},
+			Spec: rmn.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, CIDRs: cidrs[1]},
 		},
 	)
 }

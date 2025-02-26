@@ -156,23 +156,23 @@ var _ = Describe("DRPolicyController", func() {
 		drClusters = append(drClusters,
 			ramen.DRCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: "drp-cluster0"},
-				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "east"},
+				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
 			},
 			ramen.DRCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: "drp-cluster1"},
-				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "west"},
+				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
 			},
 			ramen.DRCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: "drp-cluster2"},
-				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "east"},
+				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
 			},
 			ramen.DRCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: "drp-cluster-late-create-0"},
-				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "east"},
+				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
 			},
 			ramen.DRCluster{
 				ObjectMeta: metav1.ObjectMeta{Name: "drp-cluster-late-create-1"},
-				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName, Region: "west"},
+				Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
 			},
 		)
 	}
