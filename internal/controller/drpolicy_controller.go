@@ -140,7 +140,7 @@ func (r *DRPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, fmt.Errorf("unable to set drpolicy validation: %w", err)
 	}
 
-	if err := r.initiateDRPolicyMetrics(drpolicy, drclusters); err != nil {
+	if err := r.initiateDRPolicyMetrics(drpolicy); err != nil {
 		return ctrl.Result{}, fmt.Errorf("error in intiating policy metrics: %w", err)
 	}
 
@@ -165,8 +165,8 @@ func (r *DRPolicyReconciler) reconcile(
 	return ctrl.Result{}, nil
 }
 
-func (r *DRPolicyReconciler) initiateDRPolicyMetrics(drpolicy *ramen.DRPolicy, drclusters *ramen.DRClusterList) error {
-	isMetro, _ := dRPolicySupportsMetro(drpolicy, drclusters.Items)
+func (r *DRPolicyReconciler) initiateDRPolicyMetrics(drpolicy *ramen.DRPolicy) error {
+	isMetro, _ := dRPolicySupportsMetro(drpolicy)
 
 	// Do not set metric for metro-dr
 	if !isMetro {
@@ -272,7 +272,7 @@ func hasConflictingDRPolicy(match *ramen.DRPolicy, drclusters *ramen.DRClusterLi
 	// Valid cases
 	// [e1,w1] [e1,c1]
 	// [e1,w1] [e1,w1]
-	// [e1,w1] [e2,e3,w1]
+	// [e1,w1] [e2,e3,w1 ]
 	// [e1,e2,w1] [e3,e4,w1]
 	// [e1,e2,w1,w2,c1] [e3,e4,w3,w4,c1]
 	//
@@ -299,9 +299,9 @@ func hasConflictingDRPolicy(match *ramen.DRPolicy, drclusters *ramen.DRClusterLi
 
 func haveOverlappingMetroZones(d1 *ramen.DRPolicy, d2 *ramen.DRPolicy, drclusters *ramen.DRClusterList) bool {
 	d1ClusterNames := sets.NewString(util.DRPolicyClusterNames(d1)...)
-	d1SupportsMetro, d1MetroRegions := dRPolicySupportsMetro(d1, drclusters.Items)
+	d1SupportsMetro, d1MetroClusters := dRPolicySupportsMetro(d1)
 	d2ClusterNames := sets.NewString(util.DRPolicyClusterNames(d2)...)
-	d2SupportsMetro, d2MetroRegions := dRPolicySupportsMetro(d2, drclusters.Items)
+	d2SupportsMetro, d2MetroClusters := dRPolicySupportsMetro(d2)
 	commonClusters := d1ClusterNames.Intersection(d2ClusterNames)
 
 	// No common managed clusters, so we are good
@@ -311,7 +311,7 @@ func haveOverlappingMetroZones(d1 *ramen.DRPolicy, d2 *ramen.DRPolicy, drcluster
 
 	// Lets check if the metro clusters in DRPolicy d2 belong to common managed clusters list
 	if d2SupportsMetro {
-		for _, v := range d2MetroRegions {
+		for _, v := range d2MetroClusters {
 			if sets.NewString(v...).HasAny(commonClusters.List()...) {
 				return true
 			}
@@ -320,7 +320,7 @@ func haveOverlappingMetroZones(d1 *ramen.DRPolicy, d2 *ramen.DRPolicy, drcluster
 
 	// Lets check if the metro clusters in DRPolicy d1 belong to common managed clusters list
 	if d1SupportsMetro {
-		for _, v := range d1MetroRegions {
+		for _, v := range d1MetroClusters {
 			if sets.NewString(v...).HasAny(commonClusters.List()...) {
 				return true
 			}
@@ -364,7 +364,7 @@ func (u *drpolicyUpdater) deleteDRPolicy(drclusters *ramen.DRClusterList,
 	}
 
 	// proceed to delete metrics if non-metro-dr
-	isMetro, _ := dRPolicySupportsMetro(u.object, drclusters.Items)
+	isMetro, _ := dRPolicySupportsMetro(u.object)
 	if !isMetro {
 		// delete metrics if matching labels are found
 		metricLabels := DRPolicySyncIntervalMetricLabels(u.object)

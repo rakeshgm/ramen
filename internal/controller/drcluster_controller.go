@@ -1114,11 +1114,12 @@ func getPeerFromPolicy(ctx context.Context, reconciler *DRClusterReconciler, log
 			log.Info(fmt.Sprintf("peer cluster %s of cluster %s is being deleted",
 				peerCluster.Name, drCluster.Name))
 			// for now continue. We just need to get one DRCluster with
-			// matching region
+			// matching DRCluster Name
 			continue
 		}
 
-		if drCluster.Spec.Region == peerCluster.Spec.Region {
+		// is it correct ? use name instead of region name
+		if drCluster.Name == peerCluster.Name { 
 			found = true
 
 			break
