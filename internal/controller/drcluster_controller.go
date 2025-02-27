@@ -1118,12 +1118,20 @@ func getPeerFromPolicy(ctx context.Context, reconciler *DRClusterReconciler, log
 			continue
 		}
 
-		// is it correct ? use name instead of region name
-		if drCluster.Name == peerCluster.Name { 
-			found = true
+		found = true
+		break
 
-			break
-		}
+		// is it correct ? use name instead of region name
+		// can we delete this check ?? 
+		// it was being compare with region before ?
+
+		// more than 2 ?? 
+
+		// if drCluster.Spec.Region == peerCluster.Spec.Region { 
+		// 	found = true
+
+		// 	break
+		// }
 	}
 
 	if !found {
