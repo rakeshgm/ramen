@@ -1118,6 +1118,8 @@ func getPeerFromPolicy(ctx context.Context, reconciler *DRClusterReconciler, log
 			continue
 		}
 
+		//TODO: may not work with mix mode
+
 		found = true
 		break
 

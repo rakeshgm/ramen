@@ -298,7 +298,7 @@ func hasConflictingDRPolicy(match *ramen.DRPolicy, drclusters *ramen.DRClusterLi
 }
 
 func haveOverlappingMetroZones(d1 *ramen.DRPolicy, d2 *ramen.DRPolicy, drclusters *ramen.DRClusterList) bool {
-	d1ClusterNames := sets.NewString(util.DRPolicyClusterNames(d1)...)
+	d1ClusterNames := sets.NewString(util.DRPolicyClusterNames(d1)...) // or get cids from peerclasses
 	d1SupportsMetro, d1MetroClusters := dRPolicySupportsMetro(d1)
 	d2ClusterNames := sets.NewString(util.DRPolicyClusterNames(d2)...)
 	d2SupportsMetro, d2MetroClusters := dRPolicySupportsMetro(d2)

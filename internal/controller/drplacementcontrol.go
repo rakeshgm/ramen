@@ -1834,6 +1834,11 @@ func (d *DRPCInstance) newVRGSpecSync() *rmn.VRGSyncSpec {
 
 func dRPolicySupportsMetro(drPolicy *rmn.DRPolicy) (supportsMetro bool, metroMap map[string][]string) {
 	peerClasses := drPolicy.Status.Sync.PeerClasses
+
+		// if sync and async peerclasses are empty, use region to decide
+		// if async peerClssi is empty and syncPeeRlcass is not empty, return true
+
+
 	if len(peerClasses) == 0 {
 		return false, nil
 	}
