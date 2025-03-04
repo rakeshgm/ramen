@@ -1805,6 +1805,48 @@ func (d *DRPCInstance) newVRGSpecSync() *rmn.VRGSyncSpec {
 	}
 }
 
+func checkMetroSuportUsingPeerClass(drpolicy *rmn.DRPolicy) bool {
+	return len(drpolicy.Status.Sync.PeerClasses) > 0
+
+}
+
+func checkMetroSupportUsingRegion(drpolicy *rmn.DRPolicy, drclusters []rmn.DRCluster) bool {
+	allRegionsMap := make(map[rmn.Region][]string)
+	supportsMetro := false
+
+	for _, managedCluster := range rmnutil.DRPolicyClusterNames(drpolicy) {
+		for _, v := range drclusters {
+			if v.Name == managedCluster {
+				allRegionsMap[v.Spec.Region] = append(
+					allRegionsMap[v.Spec.Region],
+					managedCluster)
+			}
+		}
+	}
+
+	for _, v := range allRegionsMap {
+		if len(v) > 1 {
+			supportsMetro = true
+		}
+	}
+
+	return supportsMetro
+}
+
+func drPolicySupportsMetro2(drpolicy *rmn.DRPolicy, drclusters []rmn.DRCluster) bool {
+	syncPeerClasses := drpolicy.Status.Sync.PeerClasses
+	aSyncPeerClasses := drpolicy.Status.Async.PeerClasses
+
+	if len(syncPeerClasses) == 0 {
+		return checkMetroSupportUsingRegion(drpolicy, drclusters)
+	}
+	if len(aSyncPeerClasses) == 0 {
+		return true
+	}
+
+	return false
+}
+
 func dRPolicySupportsMetro(drpolicy *rmn.DRPolicy, drclusters []rmn.DRCluster) (
 	supportsMetro bool,
 	metroMap map[rmn.Region][]string,
