@@ -119,7 +119,7 @@ func (r *DRPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	log.Info("create/update")
 
-	reason, err := validateDRPolicy(ctx, drpolicy, drclusters, r.APIReader)
+	reason, err := validateDRPolicy(drpolicy, drclusters)
 	if err != nil {
 		statusErr := u.validatedSetFalse(reason, err)
 		if !errors.Is(statusErr, err) || reason != ReasonDRClusterNotFound {
@@ -134,14 +134,6 @@ func (r *DRPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	if err := u.addLabelsAndFinalizers(); err != nil {
 		return ctrl.Result{}, fmt.Errorf("finalizer add update: %w", u.validatedSetFalse("FinalizerAddFailed", err))
-	}
-
-	if err := u.validatedSetTrue("Succeeded", "drpolicy validated"); err != nil {
-		return ctrl.Result{}, fmt.Errorf("unable to set drpolicy validation: %w", err)
-	}
-
-	if err := r.initiateDRPolicyMetrics(drpolicy, drclusters); err != nil {
-		return ctrl.Result{}, fmt.Errorf("error in intiating policy metrics: %w", err)
 	}
 
 	return r.reconcile(u, drclusters, secretsUtil, ramenConfig)
@@ -162,6 +154,20 @@ func (r *DRPolicyReconciler) reconcile(
 		return ctrl.Result{}, fmt.Errorf("drpolicy peerClass update: %w", err)
 	}
 
+	// we will be able to validate conflicts only after PeerClass is updated
+	err := validatePolicyConflicts(u.ctx, r.APIReader, u.object, drclusters)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("%s: %w", ReasonValidationFailed, err) // we can change the message later.
+	}
+
+	if err := u.validatedSetTrue("Succeeded", "drpolicy validated"); err != nil {
+		return ctrl.Result{}, fmt.Errorf("unable to set drpolicy validation: %w", err)
+	}
+
+	if err := r.initiateDRPolicyMetrics(u.object, drclusters); err != nil {
+		return ctrl.Result{}, fmt.Errorf("error in intiating policy metrics: %w", err)
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -178,10 +184,8 @@ func (r *DRPolicyReconciler) initiateDRPolicyMetrics(drpolicy *ramen.DRPolicy, d
 	return nil
 }
 
-func validateDRPolicy(ctx context.Context,
-	drpolicy *ramen.DRPolicy,
+func validateDRPolicy(drpolicy *ramen.DRPolicy,
 	drclusters *ramen.DRClusterList,
-	apiReader client.Reader,
 ) (string, error) {
 	// DRPolicy does not support both Sync and Async configurations in one single DRPolicy
 	if len(drpolicy.Status.Sync.PeerClasses) > 0 && len(drpolicy.Status.Async.PeerClasses) > 0 {
@@ -198,11 +202,6 @@ func validateDRPolicy(ctx context.Context,
 	reason, err := ensureDRClustersAvailable(drpolicy, drclusters)
 	if err != nil {
 		return reason, err
-	}
-
-	err = validatePolicyConflicts(ctx, apiReader, drpolicy, drclusters)
-	if err != nil {
-		return ReasonValidationFailed, err
 	}
 
 	return "", nil
