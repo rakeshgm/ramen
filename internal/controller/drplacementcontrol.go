@@ -1895,10 +1895,12 @@ func dRPolicySupportsMetro(drpolicy *rmn.DRPolicy, drclusters []rmn.DRCluster) (
 	aSyncPeerClasses := drpolicy.Status.Async.PeerClasses
 
 	if len(syncPeerClasses) == 0 && len(aSyncPeerClasses) == 0 {
+		fmt.Println("----------- filtering using Region")
 		return checkMetroSupportUsingRegion(drpolicy, drclusters)
 	}
 
 	if len(syncPeerClasses) != 0 {
+		fmt.Println("-------- filtering using peerclasses")
 		return checkMetroSupportUsingPeerClass(drpolicy)
 	}
 
@@ -1919,6 +1921,8 @@ func checkMetroSupportUsingPeerClass(drPolicy *rmn.DRPolicy) (bool, map[string][
 		}
 	}
 
+	fmt.Println("-------------- metroMap", metroMap)
+
 	// get the SIDs from one clusterID to compare with other ClusterIDs
 	var commonSID []string
 	for _, sids := range metroMap {
@@ -1927,11 +1931,15 @@ func checkMetroSupportUsingPeerClass(drPolicy *rmn.DRPolicy) (bool, map[string][
 		break
 	}
 
+	fmt.Println("common sIDS-----", commonSID)
+
 	for _, sids := range metroMap {
 		if !equalClusterIDSlices(sids, commonSID) {
 			return false, nil
 		}
 	}
+
+	fmt.Println("-------------------returning true")
 
 	return true, metroMap
 }

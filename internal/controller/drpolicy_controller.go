@@ -157,7 +157,9 @@ func (r *DRPolicyReconciler) reconcile(
 	// we will be able to validate conflicts only after PeerClass is updated
 	err := validatePolicyConflicts(u.ctx, r.APIReader, u.object, drclusters)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("%s: %w", ReasonValidationFailed, err) // we can change the message later.
+		fmt.Println("------------ error found", err)
+		return ctrl.Result{}, fmt.Errorf("DRPolicy conflict found: %w",
+			u.validatedSetFalse("DRPolicyConflictFound", err))
 	}
 
 	if err := u.validatedSetTrue("Succeeded", "drpolicy validated"); err != nil {
@@ -258,6 +260,9 @@ func validatePolicyConflicts(ctx context.Context,
 	drpolicy *ramen.DRPolicy,
 	drclusters *ramen.DRClusterList,
 ) error {
+
+	fmt.Println("in validating DRPolicy conflicts")
+
 	drpolicies, err := util.GetAllDRPolicies(ctx, apiReader)
 	if err != nil {
 		return fmt.Errorf("validate managed cluster in drpolicy %v failed: %w", drpolicy.Name, err)
@@ -295,6 +300,7 @@ func hasConflictingDRPolicy(match *ramen.DRPolicy, drclusters *ramen.DRClusterLi
 
 		// None of the common managed clusters should belong to Metro Regions in either of the drpolicies.
 		if haveOverlappingMetroZones(match, drp, drclusters) {
+			fmt.Println("---------------- overlooping metro zones ")
 			return fmt.Errorf("drpolicy: %v has overlapping metro region with another drpolicy %v", match.Name, drp.Name)
 		}
 	}
@@ -327,13 +333,17 @@ func getStorageIDsFromPeerClass(drpolicy *ramen.DRPolicy) []string {
 func hasCommonClusters(metroMap map[string][]string, commonClusterIDs, commonClusters []string) bool {
 	for _, v := range metroMap {
 		if sets.NewString(v...).HasAny(commonClusterIDs...) {
+			fmt.Println("----------- found commong SIDs returning true")
 			return true
 		}
 
 		if sets.NewString(v...).HasAny(commonClusters...) {
+			fmt.Println("----------- found commong clustersNames returning true")
 			return true
 		}
 	}
+
+	fmt.Println("=--------------does not have common clusters or commonCIDs")
 
 	return false
 }
@@ -343,15 +353,29 @@ func haveOverlappingMetroZones(d1 *ramen.DRPolicy, d2 *ramen.DRPolicy, drcluster
 	d1SIDs := sets.NewString(getStorageIDsFromPeerClass(d1)...)
 	d1SupportsMetro, d1MetroMap := dRPolicySupportsMetro(d1, drclusters.Items)
 
+	fmt.Println("---------------- DRPolicy1 supports metro", d1SupportsMetro)
+	fmt.Println("---------------D1SIDs", d1SIDs)
+	fmt.Println("---------------d1clusterNames", d1ClusterNames)
+	fmt.Println("---------------d1supporsMEtro", d1SupportsMetro)
+
 	d2ClusterNames := sets.NewString(util.DRPolicyClusterNames(d2)...)
 	d2SIDs := sets.NewString(getStorageIDsFromPeerClass(d2)...)
 	d2SupportsMetro, d2MetroMap := dRPolicySupportsMetro(d2, drclusters.Items)
 
+	fmt.Println("---------------- DRPolicy2 supports metro", d2SupportsMetro)
+	fmt.Println("---------------D2SIDs", d2SIDs)
+	fmt.Println("---------------d2clusterNames", d2SupportsMetro)
+	fmt.Println("---------------d2supporsMEtro", d2SupportsMetro)
+
 	commonClusters := d1ClusterNames.Intersection(d2ClusterNames)
 	commonSIDs := d1SIDs.Intersection(d2SIDs)
 
+	fmt.Println("---------------- commonSIDs len", commonSIDs.Len())
+	fmt.Println("---------------- commonclusters len", commonClusters.Len())
+
 	// No common managed clusters, so we are good
 	if commonSIDs.Len() == 0 && commonClusters.Len() == 0 {
+		fmt.Println("------------ does not have commonids or common clusters, returning false")
 		return false
 	}
 
@@ -368,6 +392,8 @@ func haveOverlappingMetroZones(d1 *ramen.DRPolicy, d2 *ramen.DRPolicy, drcluster
 			commonSIDs.List(),
 			commonClusters.List())
 	}
+
+	fmt.Println("------------ nothing matches, just returning false")
 
 	return false
 }
