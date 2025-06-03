@@ -15,6 +15,7 @@ import (
 	"golang.org/x/time/rate"
 
 	volrep "github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1"
+	groupsnapv1beta1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta1"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	"github.com/ramendr/ramen/internal/controller/kubeobjects"
 	"github.com/ramendr/ramen/internal/controller/kubeobjects/velero"
@@ -58,6 +59,8 @@ type VolumeReplicationGroupReconciler struct {
 	RateLimiter         *workqueue.TypedRateLimiter[reconcile.Request]
 	veleroCRsAreWatched bool
 	recipeStatus        map[string]*util.RecipeStatus
+	volumeGroupReplicationClassCRDsAreWatched bool
+	volumeGroupSnapshotClassCRDsAreWatched    bool
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -79,6 +82,8 @@ func (r *VolumeReplicationGroupReconciler) SetupWithManager(
 	if r.RateLimiter != nil {
 		rateLimiter = *r.RateLimiter
 	}
+
+	r.isVolGroupCRDsAvailable()
 
 	ctrlBuilder := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(ctrlcontroller.Options{
@@ -126,6 +131,13 @@ func (r *VolumeReplicationGroupReconciler) SetupWithManager(
 	}
 
 	r.recipeStatus = make(map[string]*util.RecipeStatus)
+	if r.volumeGroupReplicationClassCRDsAreWatched {
+		ctrlBuilder.Owns(&volrep.VolumeGroupReplicationClass{})
+	}
+
+	if r.volumeGroupSnapshotClassCRDsAreWatched {
+		ctrlBuilder.Owns(&groupsnapv1beta1.VolumeGroupSnapshotClass{})
+	}
 
 	return ctrlBuilder.Complete(r)
 }
@@ -580,12 +592,6 @@ func (v *VRGInstance) processVRG() ctrl.Result {
 		return v.invalid(err, "Failed to process list of PVCs to protect", true)
 	}
 
-
-	// remove this code, since labeling happens in updatePVCList using PeerClasses
-	// if err := v.labelPVCsForCG(); err != nil {
-	// 	return v.invalid(err, "Failed to label PVCs for consistency groups", true)
-	// }
-
 	v.log = v.log.WithValues("State", v.instance.Spec.ReplicationState)
 	v.s3StoreAccessorsGet()
 
@@ -700,6 +706,7 @@ func (v *VRGInstance) listPVCsByPVCSelector(labelSelector metav1.LabelSelector,
 }
 
 // updatePVCList fetches and updates the PVC list to process for the current instance of VRG
+// and also labels PVCs for CG if peerClass.grouping is enabled
 func (v *VRGInstance) updatePVCList() error {
 	pvcList, err := v.listPVCsByVrgPVCSelector()
 	if err != nil {
@@ -734,27 +741,6 @@ func (v *VRGInstance) updatePVCList() error {
 
 	// Separate PVCs targeted for VolRep from PVCs targeted for VolSync
 	return v.separateAsyncPVCs(pvcList)
-}
-
-func (v *VRGInstance) labelPVCsForCG() error {
-	if v.instance.Spec.Async == nil {
-		return nil
-	}
-
-	if !util.IsCGEnabled(v.instance.GetAnnotations()) {
-		return nil
-	}
-
-	for idx := range v.volSyncPVCs {
-		pvc := &v.volSyncPVCs[idx]
-
-		if err := v.addConsistencyGroupLabel(pvc); err != nil {
-			return fmt.Errorf("failed to label PVC %s/%s for consistency group (%w)",
-				pvc.GetNamespace(), pvc.GetName(), err)
-		}
-	}
-
-	return nil
 }
 
 // addVolRepConsistencyGroupLabel ensures that the given PVC is labeled as part of a consistency group.
@@ -957,6 +943,7 @@ func (v *VRGInstance) separatePVCsUsingOnlySC(storageClass *storagev1.StorageCla
 	}
 }
 
+//nolint:cyclop
 func (v *VRGInstance) separatePVCUsingPeerClassAndSC(peerClasses []ramendrv1alpha1.PeerClass,
 	storageClass *storagev1.StorageClass, pvc *corev1.PersistentVolumeClaim,
 ) error {
@@ -974,19 +961,20 @@ func (v *VRGInstance) separatePVCUsingPeerClassAndSC(peerClasses []ramendrv1alph
 		return errors.New(msg)
 	}
 
+	// label PVCs for CG if peerClass.grouping is true
+	if peerClass.Grouping {
+		if err := v.addConsistencyGroupLabel(pvc); err != nil {
+			return fmt.Errorf("failed to label PVC %s/%s for consistency group (%w)",
+				pvc.GetNamespace(), pvc.GetName(), err)
+		}
+	}
+
 	pvcEnabledForVolSync := util.IsPVCMarkedForVolSync(v.instance.GetAnnotations())
 
 	if !pvcEnabledForVolSync {
 		if peerClass.ReplicationID != "" {
 			replicationClass := v.findReplicationClassUsingPeerClass(peerClass, storageClass)
 			if replicationClass != nil {
-				// label VolRep PVCs if peerClass.grouping is enabled
-				if peerClass.Grouping {
-					if err := v.addConsistencyGroupLabel(pvc); err != nil {
-						return fmt.Errorf("failed to label PVC %s/%s for consistency group (%w)",
-							pvc.GetNamespace(), pvc.GetName(), err)
-					}
-				}
 				v.volRepPVCs = append(v.volRepPVCs, *pvc)
 
 				return nil
@@ -1008,14 +996,6 @@ func (v *VRGInstance) separatePVCUsingPeerClassAndSC(peerClasses []ramendrv1alph
 
 	if snapClass == nil {
 		return fmt.Errorf("failed to find snapshotClass for PVC %s/%s", pvc.Namespace, pvc.Name)
-	}
-
-	// label VolSyncPVCs if peerClass.grouping is enabled.
-	if peerClass.Grouping {
-		if err := v.addConsistencyGroupLabel(pvc); err != nil {
-			return fmt.Errorf("failed to label PVC %s/%s for consistency group (%w)",
-				pvc.GetNamespace(), pvc.GetName(), err)
-		}
 	}
 
 	v.volSyncPVCs = append(v.volSyncPVCs, *pvc)
@@ -2197,6 +2177,27 @@ func (r *VolumeReplicationGroupReconciler) addKubeObjectsOwnsAndWatches(ctrlBuil
 	r.veleroCRsAreWatched = true
 
 	return ctrlBuilder
+}
+
+func (r *VolumeReplicationGroupReconciler) isVolGroupCRDsAvailable() {
+	r.Log.Info("check if volumeGroupReplicationClass and volumeGroupSnapshotClass are available")
+
+	volGRoupRepClassCRD := "replication.storage.openshift.io/v1alpha1"
+	volGroupSnapshotClassCRD := "groupsnapshot.storage.k8s.io/v1beta1"
+
+	crdInstalled := func(crd string) bool {
+		installedCRD := &apiextensionsv1.CustomResourceDefinition{}
+		if err := r.APIReader.Get(context.TODO(), types.NamespacedName{Name: crd}, installedCRD); err != nil {
+			r.Log.Info("Cannot fetch volumeGroupCRD", "CRD", crd, "error", err)
+
+			return false
+		}
+
+		return true
+	}
+
+	r.volumeGroupReplicationClassCRDsAreWatched = crdInstalled(volGRoupRepClassCRD)
+	r.volumeGroupSnapshotClassCRDsAreWatched = crdInstalled(volGroupSnapshotClassCRD)
 }
 
 func (v *VRGInstance) validateVMsForStandaloneProtection() error {
