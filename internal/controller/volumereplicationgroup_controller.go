@@ -837,7 +837,9 @@ func (v *VRGInstance) updateReplicationClassList() error {
 
 	v.log.Info("Number of Replication Classes", "count", len(v.replClassList.Items))
 
-	if util.IsCGEnabled(v.instance.GetAnnotations()) {
+	// list volumeGroupReplicationClasses only if volumeGroupReplicationClass
+	// is available i.e only if the CRD has been installed
+	if v.reconciler.volumeGroupReplicationClassCRDsAreWatched {
 		if err := v.reconciler.List(v.ctx, v.grpReplClassList, listOptions...); err != nil {
 			v.log.Error(err, "Failed to list Group Replication Classes",
 				"labeled", labels.Set(labelSelector.MatchLabels))
@@ -1047,7 +1049,7 @@ func (v *VRGInstance) findReplicationClassUsingPeerClass(
 		return nil
 	}
 
-	if util.IsCGEnabled(v.instance.GetAnnotations()) {
+	if peerClass.Grouping {
 		for index := range v.grpReplClassList.Items {
 			replicationClass := &v.grpReplClassList.Items[index]
 
@@ -2173,7 +2175,7 @@ func (r *VolumeReplicationGroupReconciler) addKubeObjectsOwnsAndWatches(ctrlBuil
 
 func (r *VolumeReplicationGroupReconciler) isVolGroupCRDsAvailable() {
 	r.Log.Info("check if volumeGroupReplicationClass and volumeGroupSnapshotClass are available")
-									  
+
 	volumeGroupReplicationClassCRD := "volumegroupreplicationclasses.replication.storage.openshift.io"
 	volumeGroupSnapshotClassCRD := "volumegroupsnapshots.groupsnapshot.storage.k8s.io"
 
