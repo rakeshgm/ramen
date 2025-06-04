@@ -303,9 +303,7 @@ func (v *VRGInstance) updateProtectedPVCs(pvc *corev1.PersistentVolumeClaim) err
 			pvcNamespacedName, err)
 	}
 
-	selectVolumeGroup := rmnutil.IsCGEnabled(v.instance.GetAnnotations())
-
-	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName, selectVolumeGroup)
+	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName)
 	if err != nil {
 		return fmt.Errorf("failed to find the appropriate VolumeReplicationClass (%s) %w",
 			v.instance.Name, err)
@@ -1260,7 +1258,7 @@ func (v *VRGInstance) updateVR(pvc *corev1.PersistentVolumeClaim, volRep *volrep
 
 // createVR creates a VolumeReplication CR with a PVC as its data source.
 func (v *VRGInstance) createVR(vrNamespacedName types.NamespacedName, state volrep.ReplicationState) error {
-	volumeReplicationClass, err := v.selectVolumeReplicationClass(vrNamespacedName, false)
+	volumeReplicationClass, err := v.selectVolumeReplicationClass(vrNamespacedName)
 	if err != nil {
 		return fmt.Errorf("failed to find the appropriate VolumeReplicationClass (%s) %w",
 			v.instance.Name, err)
@@ -1314,7 +1312,7 @@ func (v *VRGInstance) createVR(vrNamespacedName types.NamespacedName, state volr
 
 //nolint:funlen,cyclop,gocognit,nestif,gocyclo
 func (v *VRGInstance) selectVolumeReplicationClass(
-	namespacedName types.NamespacedName, selectVolumeGroup bool,
+	namespacedName types.NamespacedName,
 ) (client.Object, error) {
 	if err := v.updateReplicationClassList(); err != nil {
 		return nil, err
@@ -1374,7 +1372,7 @@ func (v *VRGInstance) selectVolumeReplicationClass(
 
 	var objType string
 
-	if !selectVolumeGroup {
+	if len(v.grpReplClassList.Items) == 0 {
 		for index := range v.replClassList.Items {
 			objType = "VolumeReplicationClass"
 			replicationClass := &v.replClassList.Items[index]

@@ -50,17 +50,17 @@ import (
 // VolumeReplicationGroupReconciler reconciles a VolumeReplicationGroup object
 type VolumeReplicationGroupReconciler struct {
 	client.Client
-	APIReader                                 client.Reader
-	Log                                       logr.Logger
-	ObjStoreGetter                            ObjectStoreGetter
-	Scheme                                    *runtime.Scheme
-	eventRecorder                             *util.EventReporter
-	kubeObjects                               kubeobjects.RequestsManager
-	RateLimiter                               *workqueue.TypedRateLimiter[reconcile.Request]
-	veleroCRsAreWatched                       bool
-	recipeStatus                              map[string]*util.RecipeStatus
-	volumeGroupReplicationClassCRDsAreWatched bool
-	volumeGroupSnapshotClassCRDsAreWatched    bool
+	APIReader                                client.Reader
+	Log                                      logr.Logger
+	ObjStoreGetter                           ObjectStoreGetter
+	Scheme                                   *runtime.Scheme
+	eventRecorder                            *util.EventReporter
+	kubeObjects                              kubeobjects.RequestsManager
+	RateLimiter                              *workqueue.TypedRateLimiter[reconcile.Request]
+	veleroCRsAreWatched                      bool
+	recipeStatus                             map[string]*util.RecipeStatus
+	volumeGroupReplicationClassCRsAreWatched bool
+	volumeGroupSnapshotClassCRsAreWatched    bool
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -131,11 +131,12 @@ func (r *VolumeReplicationGroupReconciler) SetupWithManager(
 	}
 
 	r.recipeStatus = make(map[string]*util.RecipeStatus)
-	if r.volumeGroupReplicationClassCRDsAreWatched {
+
+	if r.volumeGroupReplicationClassCRsAreWatched {
 		ctrlBuilder.Owns(&volrep.VolumeGroupReplicationClass{})
 	}
 
-	if r.volumeGroupSnapshotClassCRDsAreWatched {
+	if r.volumeGroupSnapshotClassCRsAreWatched {
 		ctrlBuilder.Owns(&groupsnapv1beta1.VolumeGroupSnapshotClass{})
 	}
 
@@ -755,7 +756,7 @@ func (v *VRGInstance) updatePVCList() error {
 func (v *VRGInstance) addVolRepConsistencyGroupLabel(pvc *corev1.PersistentVolumeClaim) error {
 	pvcNamespacedName := types.NamespacedName{Name: pvc.Name, Namespace: pvc.Namespace}
 
-	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName, true)
+	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName)
 	if err != nil {
 		return err
 	}
@@ -837,7 +838,9 @@ func (v *VRGInstance) updateReplicationClassList() error {
 
 	v.log.Info("Number of Replication Classes", "count", len(v.replClassList.Items))
 
-	if util.IsCGEnabled(v.instance.GetAnnotations()) {
+	// list volumeGroupReplicationClasses only if volumeGroupReplicationClass
+	// is available i.e only if the CRD has been installed
+	if v.reconciler.volumeGroupReplicationClassCRsAreWatched {
 		if err := v.reconciler.List(v.ctx, v.grpReplClassList, listOptions...); err != nil {
 			v.log.Error(err, "Failed to list Group Replication Classes",
 				"labeled", labels.Set(labelSelector.MatchLabels))
@@ -911,7 +914,11 @@ func (v *VRGInstance) separatePVCsUsingOnlySC(storageClass *storagev1.StorageCla
 			}
 		}
 
-		if util.IsCGEnabled(v.instance.GetAnnotations()) {
+		// if util.IsCGEnabled(v.instance.GetAnnotations()) {
+		// is this correct ?? need to check
+		// using volumeGroupReplicationClassCRDsAreWatched because peerclass is here.
+		// this is the backward compatibility code where peerclass is not here.
+		if v.reconciler.volumeGroupReplicationClassCRsAreWatched {
 			for _, replicationClass := range v.grpReplClassList.Items {
 				separatePVCs(replicationClass.Spec.Provisioner)
 
@@ -935,7 +942,7 @@ func (v *VRGInstance) separatePVCsUsingOnlySC(storageClass *storagev1.StorageCla
 	}
 }
 
-//nolint:cyclop
+//nolint:cyclop,funlen,nestif,gocognit
 func (v *VRGInstance) separatePVCUsingPeerClassAndSC(peerClasses []ramendrv1alpha1.PeerClass,
 	storageClass *storagev1.StorageClass, pvc *corev1.PersistentVolumeClaim,
 ) error {
@@ -1053,7 +1060,7 @@ func (v *VRGInstance) findReplicationClassUsingPeerClass(
 		return nil
 	}
 
-	if util.IsCGEnabled(v.instance.GetAnnotations()) {
+	if peerClass.Grouping {
 		for index := range v.grpReplClassList.Items {
 			replicationClass := &v.grpReplClassList.Items[index]
 
@@ -2194,8 +2201,8 @@ func (r *VolumeReplicationGroupReconciler) isVolGroupCRDsAvailable() {
 		return true
 	}
 
-	r.volumeGroupReplicationClassCRDsAreWatched = isCRDInstalled(volumeGroupReplicationClassCRD)
-	r.volumeGroupSnapshotClassCRDsAreWatched = isCRDInstalled(volumeGroupSnapshotClassCRD)
+	r.volumeGroupReplicationClassCRsAreWatched = isCRDInstalled(volumeGroupReplicationClassCRD)
+	r.volumeGroupSnapshotClassCRsAreWatched = isCRDInstalled(volumeGroupSnapshotClassCRD)
 }
 
 func (v *VRGInstance) validateVMsForStandaloneProtection() error {

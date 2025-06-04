@@ -448,7 +448,7 @@ func (v *VRGInstance) reconcileMissingVGR(vrNamespacedName types.NamespacedName,
 func (v *VRGInstance) isCGEnabled(pvc *corev1.PersistentVolumeClaim) (string, bool) {
 	cg, ok := pvc.GetLabels()[ConsistencyGroupLabel]
 
-	return cg, ok && rmnutil.IsCGEnabled(v.instance.GetAnnotations())
+	return cg, ok
 }
 
 func (v *VRGInstance) processVGRAsPrimary(vrNamespacedName types.NamespacedName,
@@ -583,13 +583,13 @@ func (v *VRGInstance) createVGR(vrNamespacedName types.NamespacedName,
 ) error {
 	pvcNamespacedName := types.NamespacedName{Name: pvcs[0].Name, Namespace: pvcs[0].Namespace}
 
-	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName, false)
+	volumeReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName)
 	if err != nil {
 		return fmt.Errorf("failed to find the appropriate VolumeReplicationClass (%s) %w",
 			v.instance.Name, err)
 	}
 
-	volumeGroupReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName, true)
+	volumeGroupReplicationClass, err := v.selectVolumeReplicationClass(pvcNamespacedName)
 	if err != nil {
 		return fmt.Errorf("failed to find the appropriate VolumeGroupReplicationClass (%s) %w",
 			v.instance.Name, err)
