@@ -16,6 +16,7 @@ import (
 	"golang.org/x/time/rate"
 
 	volrep "github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1"
+	groupsnapv1beta1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumegroupsnapshot/v1beta1"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	"github.com/ramendr/ramen/internal/controller/kubeobjects"
 	"github.com/ramendr/ramen/internal/controller/kubeobjects/velero"
@@ -50,15 +51,17 @@ import (
 // VolumeReplicationGroupReconciler reconciles a VolumeReplicationGroup object
 type VolumeReplicationGroupReconciler struct {
 	client.Client
-	APIReader           client.Reader
-	Log                 logr.Logger
-	ObjStoreGetter      ObjectStoreGetter
-	Scheme              *runtime.Scheme
-	eventRecorder       *util.EventReporter
-	kubeObjects         kubeobjects.RequestsManager
-	RateLimiter         *workqueue.TypedRateLimiter[reconcile.Request]
-	veleroCRsAreWatched bool
-	recipeRetries       sync.Map
+	APIReader                                client.Reader
+	Log                                      logr.Logger
+	ObjStoreGetter                           ObjectStoreGetter
+	Scheme                                   *runtime.Scheme
+	eventRecorder                            *util.EventReporter
+	kubeObjects                              kubeobjects.RequestsManager
+	RateLimiter                              *workqueue.TypedRateLimiter[reconcile.Request]
+	veleroCRsAreWatched                      bool
+	recipeRetries                            sync.Map
+	volumeGroupReplicationClassCRsAreWatched bool
+	volumeGroupSnapshotClassCRsAreWatched    bool
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -80,6 +83,8 @@ func (r *VolumeReplicationGroupReconciler) SetupWithManager(
 	if r.RateLimiter != nil {
 		rateLimiter = *r.RateLimiter
 	}
+
+	r.isVolGroupCRDsAvailable()
 
 	ctrlBuilder := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(ctrlcontroller.Options{
@@ -124,6 +129,14 @@ func (r *VolumeReplicationGroupReconciler) SetupWithManager(
 		ctrlBuilder = r.addKubeObjectsOwnsAndWatches(ctrlBuilder)
 	} else {
 		r.Log.Info("Kube object protection disabled; don't watch kube objects requests")
+	}
+
+	if r.volumeGroupReplicationClassCRsAreWatched {
+		ctrlBuilder.Owns(&volrep.VolumeGroupReplicationClass{})
+	}
+
+	if r.volumeGroupSnapshotClassCRsAreWatched {
+		ctrlBuilder.Owns(&groupsnapv1beta1.VolumeGroupSnapshotClass{})
 	}
 
 	return ctrlBuilder.Complete(r)
@@ -2205,6 +2218,27 @@ func (v *VRGInstance) validateVMsForStandaloneProtection() error {
 	}
 
 	return nil
+}
+
+func (r *VolumeReplicationGroupReconciler) isVolGroupCRDsAvailable() {
+	r.Log.Info("check if volumeGroupReplicationClass and volumeGroupSnapshotClass are available")
+
+	volumeGroupReplicationClassCRD := "volumegroupreplicationclasses.replication.storage.openshift.io"
+	volumeGroupSnapshotClassCRD := "volumegroupsnapshots.groupsnapshot.storage.k8s.io"
+
+	isCRDInstalled := func(crd string) bool {
+		installedCRD := &apiextensionsv1.CustomResourceDefinition{}
+		if err := r.APIReader.Get(context.TODO(), types.NamespacedName{Name: crd}, installedCRD); err != nil {
+			r.Log.Info("Cannot fetch volumeGroupCRD", "CRD", crd, "error", err)
+
+			return false
+		}
+
+		return true
+	}
+
+	r.volumeGroupReplicationClassCRsAreWatched = isCRDInstalled(volumeGroupReplicationClassCRD)
+	r.volumeGroupSnapshotClassCRsAreWatched = isCRDInstalled(volumeGroupSnapshotClassCRD)
 }
 
 func (v *VRGInstance) CheckForVMConflictOnPrimary() error {
