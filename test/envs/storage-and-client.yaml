@@ -1,0 +1,66 @@
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Environment for testing Metro-DR.
+---
+name: "mdr"
+
+# ramen:
+#   hub: hub
+#   clusters: [dr1, dr2, storage]
+#   topology: metro-dr
+#   features:
+#     volsync: false
+
+templates:
+  - name: "client-cluster"
+    driver: "$vm"
+    container_runtime: containerd
+    containerd:
+      plugins:
+        io.containerd.grpc.v1.cri:
+          device_ownership_from_security_context: true
+    network: "$network"
+    cpus: 4
+    memory: "5g"
+    feature_gates:
+      - StatefulSetAutoDeletePVC=true
+    workers:
+      - addons:
+          - name: olm
+          - name: csi-addons
+          - name: rook-operator
+          - name: rook-external-cluster
+            args: ["$name", "storage"]
+  - name: "storage-cluster"
+    driver: "$vm"
+    container_runtime: containerd
+    containerd:
+      plugins:
+        io.containerd.grpc.v1.cri:
+          device_ownership_from_security_context: true
+    network: "$network"
+    cpus: 4
+    memory: "6g"
+    extra_disks: 1
+    disk_size: "50g"
+    feature_gates:
+      - StatefulSetAutoDeletePVC=true
+    workers:
+      - addons:
+          - name: rook-operator
+          - name: rook-cluster
+          - name: rook-toolbox
+          - name: rook-pool
+      - addons:
+          - name: olm
+          - name: external-snapshotter
+          - name: csi-addons
+          - name: minio
+
+profiles:
+  - name: "client"
+    template: "client-cluster"
+  - name: "storage"
+    template: "storage-cluster" 
+
