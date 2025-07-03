@@ -765,7 +765,7 @@ func (u *drclusterInstance) handleDeletion() (bool, error) {
 		return true, fmt.Errorf("getting all drpolicies failed: %w", err)
 	}
 
-	peerCluster, err := getPeerCluster(u.ctx, drpolicies, u.reconciler, u.object, u.log)
+	peerCluster, _, err := getPeerCluster(u.ctx, drpolicies, u.reconciler, u.object, u.log)
 	if err != nil {
 		return true, fmt.Errorf("failed to get the peer cluster for the cluster %s: %w",
 			u.object.Name, err)
@@ -789,13 +789,13 @@ func (u *drclusterInstance) clusterFence() (bool, error) {
 		return true, fmt.Errorf("getting all drpolicies failed: %w", err)
 	}
 
-	peerCluster, err := getPeerCluster(u.ctx, drpolicies, u.reconciler, u.object, u.log)
+	peerCluster, peerClasses, err := getPeerCluster(u.ctx, drpolicies, u.reconciler, u.object, u.log)
 	if err != nil {
 		return true, fmt.Errorf("failed to get the peer cluster for the cluster %s: %w",
 			u.object.Name, err)
 	}
 
-	return u.fenceClusterOnCluster(&peerCluster)
+	return u.fenceClusterOnCluster(&peerCluster, peerClasses)
 }
 
 func (u *drclusterInstance) clusterUnfence() (bool, error) {
@@ -813,7 +813,7 @@ func (u *drclusterInstance) clusterUnfence() (bool, error) {
 		return true, fmt.Errorf("getting all drpolicies failed: %w", err)
 	}
 
-	peerCluster, err := getPeerCluster(u.ctx, drpolicies, u.reconciler, u.object,
+	peerCluster, _, err := getPeerCluster(u.ctx, drpolicies, u.reconciler, u.object,
 		u.log)
 	if err != nil {
 		return true, fmt.Errorf("failed to get the peer cluster for the cluster %s: %w",
@@ -850,7 +850,7 @@ func (u *drclusterInstance) clusterUnfence() (bool, error) {
 //	return requeue, nil
 //
 // endif
-func (u *drclusterInstance) fenceClusterOnCluster(peerCluster *ramen.DRCluster) (bool, error) {
+func (u *drclusterInstance) fenceClusterOnCluster(peerCluster *ramen.DRCluster, peerClasses *[]ramen.PeerClass) (bool, error) {
 	if !u.isFencingOrFenced() {
 		u.log.Info(fmt.Sprintf("initiating the cluster fence from the cluster %s", peerCluster.Name))
 
@@ -1043,8 +1043,10 @@ func (u *drclusterInstance) removeFencingCR(cluster ramen.DRCluster) (bool, erro
 
 func getPeerCluster(ctx context.Context, list ramen.DRPolicyList, reconciler *DRClusterReconciler,
 	object *ramen.DRCluster, log logr.Logger,
-) (ramen.DRCluster, error) {
+) (ramen.DRCluster, *[]ramen.PeerClass, error) {
 	var peerCluster ramen.DRCluster
+	
+	var peerClasses *[]ramen.PeerClass
 
 	found := false
 
@@ -1072,6 +1074,7 @@ func getPeerCluster(ctx context.Context, list ramen.DRPolicyList, reconciler *DR
 				}
 
 				peerCluster = *drCluster
+				peerClasses = &drp.Status.Sync.PeerClasses
 				found = true
 
 				break
@@ -1084,10 +1087,10 @@ func getPeerCluster(ctx context.Context, list ramen.DRPolicyList, reconciler *DR
 	}
 
 	if !found {
-		return peerCluster, fmt.Errorf("failed to find the peer cluster for cluster %s", object.Name)
+		return peerCluster, peerClasses, fmt.Errorf("failed to find the peer cluster for cluster %s", object.Name)
 	}
 
-	return peerCluster, nil
+	return peerCluster, peerClasses, nil
 }
 
 func getPeerFromPolicy(ctx context.Context, reconciler *DRClusterReconciler, log logr.Logger,

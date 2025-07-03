@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	csiaddonsv1alpha1 "github.com/csi-addons/kubernetes-csi-addons/api/csiaddons/v1alpha1"
 	volrep "github.com/csi-addons/kubernetes-csi-addons/api/replication.storage/v1alpha1"
 	"github.com/go-logr/logr"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
@@ -24,6 +25,7 @@ type classLists struct {
 	sClasses  []*storagev1.StorageClass
 	vsClasses []*snapv1.VolumeSnapshotClass
 	vrClasses []*volrep.VolumeReplicationClass
+	nfClasses []*csiaddonsv1alpha1.NetworkFenceClass
 }
 
 // peerInfo contains a single peer relationship between a PAIR of clusters for a common storageClassName across
@@ -48,6 +50,9 @@ type peerInfo struct {
 
 	// clusterIDs is a list of 2 IDs that denote the IDs for the clusters in this peer relationship
 	clusterIDs []string
+
+	// networkFenceClassName is the name of a NetworkFenceClass that is common across the sync peers
+	networkFenceClassName string
 }
 
 // peerClassMatchesPeer compares the storage class name across the PeerClass and passed in peer for a match, and if
@@ -93,10 +98,11 @@ func findPeerInStatusPeer(peer peerInfo, pcs []ramen.PeerClass) bool {
 
 func peerClassFromPeer(peer peerInfo) ramen.PeerClass {
 	return ramen.PeerClass{
-		ClusterIDs:       peer.clusterIDs,
-		StorageClassName: peer.storageClassName,
-		StorageID:        peer.storageIDs,
-		ReplicationID:    peer.replicationID,
+		ClusterIDs:            peer.clusterIDs,
+		StorageClassName:      peer.storageClassName,
+		StorageID:             peer.storageIDs,
+		ReplicationID:         peer.replicationID,
+		NetworkFenceClassName: peer.networkFenceClassName,
 	}
 }
 
@@ -283,10 +289,17 @@ func getSyncPeers(scName string, clusterID string, sID string, cls []classLists)
 
 			// TODO: Check provisioner match?
 
+			// check networkFenceClass provisioner matches with storageClass Provisioner
+			var nfClassName string
+			if idx < len(cl.nfClasses) && cl.nfClasses[idx].Spec.Provisioner == cl.sClasses[idx].Provisioner {
+				nfClassName = cl.nfClasses[idx].GetName()
+			}
+
 			peers = append(peers, peerInfo{
-				storageClassName: scName,
-				storageIDs:       []string{sID},
-				clusterIDs:       []string{clusterID, cl.clusterID},
+				storageClassName:      scName,
+				storageIDs:            []string{sID},
+				clusterIDs:            []string{clusterID, cl.clusterID},
+				networkFenceClassName: nfClassName,
 			})
 
 			break
@@ -521,6 +534,49 @@ func getSClassesFromCluster(
 	return sClasses, pruneSClassViews(m, u.log, clusterName, sClassNames)
 }
 
+// getNFlassesFromCluster gets NetworkFenceClasses that are claimed in the DRClusterConfig status
+func getNFlassesFromCluster(
+	u *drpolicyUpdater,
+	m util.ManagedClusterViewGetter,
+	drcConfig *ramen.DRClusterConfig,
+	clusterName string,
+) ([]*csiaddonsv1alpha1.NetworkFenceClass, error) {
+	nfClasses := []*csiaddonsv1alpha1.NetworkFenceClass{}
+
+	nfClassNames := drcConfig.Status.NetworkFenceClasses
+	if len(nfClassNames) == 0 {
+		return nfClasses, nil
+	}
+
+	annotations := make(map[string]string)
+	annotations[AllDRPolicyAnnotation] = clusterName
+
+	for _, nfcName := range nfClassNames {
+		nfClass, err := m.GetNFClassFromManagedCluster(nfcName, clusterName, annotations)
+		if err != nil {
+			return []*csiaddonsv1alpha1.NetworkFenceClass{}, err
+		}
+
+		nfClasses = append(nfClasses, nfClass)
+	}
+
+	return nfClasses, pruneNFClassViews(m, u.log, clusterName, nfClassNames)
+}
+
+func pruneNFClassViews(
+	m util.ManagedClusterViewGetter,
+	log logr.Logger,
+	clusterName string,
+	survivorClassNames []string,
+) error {
+	mcvList, err := m.ListNFClassMCVs(clusterName)
+	if err != nil {
+		return err
+	}
+
+	return pruneClassViews(m, log, clusterName, survivorClassNames, mcvList)
+}
+
 // getClusterClasses inspects, using ManagedClusterView, the DRClusterConfig claims for all storage related classes,
 // and returns the set of classLists for the passed in clusters
 func getClusterClasses(
@@ -561,11 +617,17 @@ func getClusterClasses(
 		return classLists{}, err
 	}
 
+	nfClasses, err := getNFlassesFromCluster(u, m, drcConfig, cluster)
+	if err != nil {
+		return classLists{}, err
+	}
+
 	return classLists{
 		clusterID: clID,
 		sClasses:  sClasses,
 		vrClasses: vrClasses,
 		vsClasses: vsClasses,
+		nfClasses: nfClasses,
 	}, nil
 }
 
@@ -576,6 +638,10 @@ func deleteViewsForClasses(m util.ManagedClusterViewGetter, log logr.Logger, clu
 	}
 
 	if err := pruneVSClassViews(m, log, clusterName, []string{}); err != nil {
+		return err
+	}
+
+	if err := pruneNFClassViews(m, log, clusterName, []string{}); err != nil {
 		return err
 	}
 

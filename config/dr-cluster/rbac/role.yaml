@@ -199,6 +199,14 @@ rules:
   - list
   - watch
 - apiGroups:
+  - csiaddons.openshift.io
+  resources:
+  - networkfenceclasses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - replication.storage.openshift.io
   resources:
   - volumegroupreplications

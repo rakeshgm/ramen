@@ -98,6 +98,10 @@ type PeerClass struct {
 	//+optional
 	StorageClassName string `json:"storageClassName,omitempty"`
 
+	// NetworkFenceClassName is the name of a NetworkFenceClass that is available across the sync peers
+	//+optional
+	NetworkFenceClassName string `json:"networkFenceClasName,omitempty"`
+
 	// ClusterIDs is a list of two clusterIDs that represent this peer relationship for a common StorageClassName
 	// The IDs are based on the value of the metadata.uid of the kube-system namespace
 	ClusterIDs []string `json:"clusterIDs,omitempty"`
