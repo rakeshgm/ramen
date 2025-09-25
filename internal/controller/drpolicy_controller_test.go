@@ -332,4 +332,94 @@ var _ = Describe("DRPolicyController", func() {
 			vaildateSecretDistribution(nil)
 		})
 	})
+
+	When("two metroDR policies try to share the same DRClusters", func() {
+		It("should prevent the second policy from being validated due to overlapping metro zones", func() {
+
+			
+
+			// Create managed clusters 
+			ensureManagedCluster(k8sClient, "metro-dr1")
+			ensureManagedCluster(k8sClient, "metro-dr2")
+
+			// Create two DR clusters
+			metroClusters := []ramen.DRCluster{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "metro-dr1"},
+					Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "metro-dr2"},
+					Spec:       ramen.DRClusterSpec{S3ProfileName: s3Profiles[0].S3ProfileName},
+				},
+			}
+
+			By("creating DRClusters for metroDR")
+			for i := range metroClusters {
+				drcluster := &metroClusters[i]
+				Expect(k8sClient.Create(
+					context.TODO(),
+					&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: drcluster.Name}},
+				)).To(Succeed())
+				Expect(k8sClient.Create(context.TODO(), drcluster)).To(Succeed())
+				updateDRClusterManifestWorkStatus(k8sClient, apiReader, drcluster.Name)
+				updateDRClusterConfigMWStatus(k8sClient, apiReader, drcluster.Name)
+				objectConditionExpectEventually(
+					apiReader,
+					drcluster,
+					metav1.ConditionTrue,
+					Equal("Succeeded"),
+					Ignore(),
+					ramen.DRClusterValidated,
+					!ramenConfig.DrClusterOperator.DeploymentAutomationEnabled,
+				)
+			}
+
+			// Create first metro DR policy
+			dp1 := &ramen.DRPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: "metro-dp1"},
+				Spec: ramen.DRPolicySpec{
+					DRClusters:         []string{"metro-dr1", "metro-dr2"},
+					SchedulingInterval: "0m", // Metro DR scheduling interval
+				},
+			}
+
+			By("creating the first metro DR policy")
+			Expect(k8sClient.Create(context.TODO(), dp1)).To(Succeed())
+			validatedConditionExpect(dp1, metav1.ConditionTrue, Ignore())
+
+			// create second metro DR policy with the same clusters
+			dp2 := &ramen.DRPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: "metro-dp2"},
+				Spec: ramen.DRPolicySpec{
+					DRClusters:         []string{"metro-dr1", "metro-dr2"},
+					SchedulingInterval: "0m", // Metro DR scheduling interval
+				},
+			}
+
+			By("creating the second metro DR policy with the same clusters")
+			Expect(k8sClient.Create(context.TODO(), dp2)).To(Succeed())
+
+			By("verifying the second policy fails validation due to overlapping metro zones")
+			validatedConditionExpect(dp2, metav1.ConditionFalse,
+				ContainSubstring("has overlapping clusters with another drpolicy"))
+
+			By("cleaning up the test resources")
+			drpolicyDeleteAndConfirm(dp1)
+			drpolicyDeleteAndConfirm(dp2)
+
+			// Clean up DR clusters
+			for i := range metroClusters {
+				drcluster := &metroClusters[i]
+				Expect(k8sClient.Delete(context.TODO(), drcluster)).To(Succeed())
+				Eventually(func() bool {
+					return k8serrors.IsNotFound(apiReader.Get(context.TODO(), types.NamespacedName{Name: drcluster.Name}, drcluster))
+				}, timeout, interval).Should(BeTrue())
+
+				// Clean up namespace
+				ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: drcluster.Name}}
+				Expect(k8sClient.Delete(context.TODO(), ns)).To(Succeed())
+			}
+		})
+	})
 })
