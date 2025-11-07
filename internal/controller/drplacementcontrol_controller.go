@@ -532,6 +532,10 @@ func (r *DRPlacementControlReconciler) getAndEnsureValidDRPolicy(ctx context.Con
 		return nil, fmt.Errorf("DRPolicy not valid %w", err)
 	}
 
+	if len(drPolicy.Status.Async.PeerClasses) == 0 && len(drPolicy.Status.Sync.PeerClasses) == 0 {
+		return nil, fmt.Errorf("PeerClasses are not updated in DRPolicy")
+	}
+
 	return drPolicy, nil
 }
 
