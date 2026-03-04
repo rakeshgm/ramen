@@ -5,12 +5,11 @@
 
 import os
 import sys
-import shlex
-import tempfile
 import subprocess
 import logging
 
 import drenv
+from drenv import cache
 from drenv import kubectl
 from drenv import commands
 
@@ -18,6 +17,8 @@ from drenv import commands
 # Update this when upgrading rook.
 VERSION = "v1.17.7"
 BASE_URL = f"https://raw.githubusercontent.com/rook/rook/refs/tags/{VERSION}/deploy/examples"
+IMPORT_SCRIPT_URL = f"{BASE_URL}/import-external-cluster.sh"
+CACHE_KEY = f"addons/rook-import-external-cluster-{VERSION}.sh"
 ROOK_CEPH_NAME_SPACE = "rook-ceph"
 
 
@@ -27,17 +28,10 @@ def get_cluster_details_from_external_storage_cluster(external_storage_cluster):
     cluster_details = get_rook_ceph_external_cluster_details(podname, external_storage_cluster)
     return cluster_details
 
-def download_import_external_cluster_file(out):
-    logging.debug("Downloading import-external-cluster.sh of version %s to %s", VERSION, out)
-    file_name = "import-external-cluster.sh"
-    url = (
-        f"{BASE_URL}/{file_name}"
-    )
-    f = os.path.join(out, file_name)
-    cmd = ["curl", "--no-progress-meter", "--location", "--output", f, url]
-    logging.debug("Running %s", cmd)
-    subprocess.run(cmd, check=True)
-    return f
+
+def download_import_external_cluster_file(log=logging.debug):
+    path = cache.get_file(CACHE_KEY, IMPORT_SCRIPT_URL, log=log)
+    return path
 
 def rook_connect_to_external_storage_cluster(managed_cluster, external_storage_cluster):
     cluster_details = get_cluster_details_from_external_storage_cluster(external_storage_cluster)
@@ -52,7 +46,7 @@ def rook_connect_to_external_storage_cluster(managed_cluster, external_storage_c
             k, v = rest.split("=", 1)
             env[k] = v
         
-    f = download_import_external_cluster_file(os.getcwd())
+    f = download_import_external_cluster_file()
 
     run_script_result = subprocess.run(["/bin/bash", f],
                                        capture_output=True, encoding='utf-8', env=env)
