@@ -7,7 +7,8 @@ name: "mdr"
 
 ramen:
   hub: hub
-  clusters: [dr1, dr2, storage]
+  clusters: [dr1, dr2]
+  storage: storage
   topology: metro-dr
   features:
     volsync: false
@@ -43,9 +44,6 @@ templates:
           - name: ocm-hub
           - name: ocm-controller
           - name: olm
-      - addons:
-        - name: argocd
-          args: ["hub", "dr1", "dr2"]
   - name: "storage-cluster"
     driver: "$vm"
     container_runtime: containerd
@@ -80,5 +78,15 @@ profiles:
   - name: "hub"
     template: "hub-cluster"
   - name: "storage"
-    template: "storage-cluster" 
+    template: "storage-cluster"
 
+workers:
+  - addons:
+      - name: rook-external-cluster
+        args: ["dr1", "storage"]
+  - addons:
+      - name: rook-external-cluster
+        args: ["dr2", "storage"]
+  - addons:
+      - name: argocd
+        args: ["hub", "dr1", "dr2"]
