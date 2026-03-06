@@ -21,6 +21,17 @@ IMPORT_SCRIPT_URL = f"{BASE_URL}/import-external-cluster.sh"
 CACHE_KEY = f"addons/rook-import-external-cluster-{VERSION}.sh"
 ROOK_CEPH_NAME_SPACE = "rook-ceph"
 
+# StorageClass names created by import script; we delete these and create our own.
+IMPORT_STORAGE_CLASS_NAMES = ["ceph-rbd", "ceph-rbd-topology", "cephfs"]
+
+# Same names and storageid as storage cluster (rook-pool) for Ramen Metro-DR.
+STORAGE_CLASSES = [
+    {"name": "rook-ceph-block", "pool": "replicapool"},
+    {"name": "rook-ceph-block-2", "pool": "replicapool-2"},
+]
+# Use cluster="storage" so ramendr.openshift.io/storageid matches storage profile.
+STORAGE_ID_CLUSTER = "storage"
+
 
 def get_cluster_details_from_external_storage_cluster(external_storage_cluster):
     wait_for_ceph_cluster_phase(external_storage_cluster, "Ready")
@@ -54,6 +65,27 @@ def rook_connect_to_external_storage_cluster(managed_cluster, external_storage_c
     if run_script_result.returncode != 0:
         print("Failed to run script: " + run_script_result.stderr)
         sys.exit(1)
+
+
+def replace_storage_classes_with_ramen(managed_cluster):
+    """
+    Delete StorageClasses created by the import script and create ones that match
+    the storage cluster (same names, ramendr.openshift.io/storageid) for Ramen.
+    """
+    print("Replacing import StorageClasses with storage-cluster-style (ramendr label)")
+    for sc_name in IMPORT_STORAGE_CLASS_NAMES:
+        kubectl.delete("storageclass", sc_name, "--ignore-not-found", context=managed_cluster)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(script_dir, "..", "rook-pool", "storage-class.yaml")
+    template = drenv.template(template_path)
+    for sc in STORAGE_CLASSES:
+        yaml = template.substitute(
+            cluster=STORAGE_ID_CLUSTER,
+            name=sc["name"],
+            pool=sc["pool"],
+        )
+        kubectl.apply("--filename=-", input=yaml, context=managed_cluster)
+
 
 def get_ceph_toolbox_pod_name(cluster):
     return kubectl.get(
@@ -127,6 +159,7 @@ def deploy(cluster, external_storage_cluster):
         kubectl.apply("--kustomize", kustomization, context=cluster)
 
     rook_connect_to_external_storage_cluster(cluster, external_storage_cluster)
+    replace_storage_classes_with_ramen(cluster)
 
 def wait(cluster):
     print("Waiting until rook ceph external cluster is connected")
