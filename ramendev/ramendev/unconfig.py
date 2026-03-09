@@ -23,17 +23,29 @@ def run(args):
     # Note: We keep the ramen config map since we do not own it.
 
     if env["hub"]:
-        delete_hub_dr_resources(env["hub"], env["clusters"], env["topology"])
-        s3_secrets = generate_ramen_s3_secrets(env["clusters"], args)
+        from .config import _config_context
+
+        ctx = _config_context(env, args)
+        delete_hub_dr_resources(env["hub"], env["topology"], ctx)
+        s3_secrets = generate_ramen_s3_secrets(ctx["storage_clusters"], args)
         delete_s3_secrets(env["hub"], s3_secrets)
 
 
-def delete_hub_dr_resources(hub, clusters, topology):
+def delete_hub_dr_resources(hub, topology, ctx):
     # Deleting in reverse order.
+    dr_clusters = ctx["dr_clusters"]
+    s3_profile_names = ctx["s3_profile_names"]
+    substitute_kw = {
+        "cluster1": dr_clusters[0],
+        "cluster2": dr_clusters[1],
+    }
+    if len(s3_profile_names) == 1:
+        substitute_kw["storage_cluster"] = s3_profile_names[0]["cluster"]
+
     for name in ["dr-policy", "dr-clusters"]:
         command.info("Deleting %s for %s", name, topology)
         template = drenv.template(command.resource(f"{topology}/{name}.yaml"))
-        yaml = template.substitute(cluster1=clusters[0], cluster2=clusters[1])
+        yaml = template.substitute(**substitute_kw)
         kubectl.delete(
             "--filename=-",
             "--ignore-not-found",

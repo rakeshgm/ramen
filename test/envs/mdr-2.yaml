@@ -7,8 +7,7 @@ name: "mdr"
 
 ramen:
   hub: hub
-  clusters: [dr1, dr2]
-  storage_cluster: storage-cluster
+  clusters: [dr1, dr2, storage]
   topology: metro-dr
   features:
     volsync: false
@@ -33,17 +32,6 @@ templates:
           - name: olm
           - name: csi-addons
           - name: rook-operator
-  - name: "hub-cluster"
-    driver: "$vm"
-    container_runtime: containerd
-    network: "$network"
-    cpus: 2
-    memory: "4g"
-    workers:
-      - addons:
-          - name: ocm-hub
-          - name: ocm-controller
-          - name: olm
   - name: "storage-cluster"
     driver: "$vm"
     container_runtime: containerd
@@ -69,24 +57,35 @@ templates:
           - name: external-snapshotter
           - name: csi-addons
           - name: minio
+  - name: "hub-cluster"
+    driver: "$vm"
+    container_runtime: containerd
+    network: "$network"
+    cpus: 2
+    memory: "4g"
+    workers:
+      - addons:
+          - name: ocm-hub
+          - name: ocm-controller
+          - name: olm
+      - addons:
+          - name: argocd
+            args: ["hub", "dr1", "dr2"]
 
 profiles:
+  - name: "storage"
+    template: "storage-cluster" 
+  - name: "hub"
+    template: "hub-cluster"
   - name: "dr1"
     template: "dr-cluster"
   - name: "dr2"
     template: "dr-cluster"
-  - name: "hub"
-    template: "hub-cluster"
-  - name: "storage-cluster"
-    template: "storage-cluster"
 
 workers:
   - addons:
       - name: rook-external-cluster
-        args: ["dr1", "storage-cluster"]
+        args: ["dr1", "storage"]
   - addons:
       - name: rook-external-cluster
-        args: ["dr2", "storage-cluster"]
-  - addons:
-      - name: argocd
-        args: ["hub", "dr1", "dr2"]
+        args: ["dr2", "storage"]
