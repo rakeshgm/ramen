@@ -1,0 +1,17 @@
+# Expose metrics port on the manager container when using controller-runtime
+# built-in auth (replaces kube-rbac-proxy sidecar).
+# See https://github.com/kubernetes-sigs/kubebuilder/discussions/3907
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operator
+  namespace: system
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP

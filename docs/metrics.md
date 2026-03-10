@@ -44,17 +44,18 @@ Next is to install and configure ramen.
 ## 2. Basic testing (no Prometheus required)
 
 If running from minikube or a container, expose the port using `port-forward`
-on the hub. The endpoint exposed is `localhost:8443/metrics`.
-
->*This way does not use kube-rbac-proxy, use this method only for any quick debugging*
+on the hub. The endpoint exposed is `localhost:8443/metrics`. The metrics
+endpoint is protected by controller-runtime built-in auth (see
+[Kubebuilder discussion 3907](https://github.com/kubernetes-sigs/kubebuilder/discussions/3907));
+use a service account token when scraping.
 
 ```bash
 kubectl port-forward -n ramen-system \
-deployment/ramen-hub-operator 8443:9289
+deployment/ramen-hub-operator 8443:8443
 ```
 
-Verify that the metrics endpoint is exposed with curl:
-`curl http://localhost:8443/metrics`.
+Verify that the metrics endpoint is exposed with curl (use `-k` for self-signed cert and a Bearer token for auth):
+`curl -k -H "Authorization: Bearer $TOKEN" https://localhost:8443/metrics`.
 
 If curl can connect, search for your metrics in the output.
 
@@ -64,4 +65,4 @@ All metrics are prefixed with `ramen_`. This makes them easier to find.
 
 To get the list of all the Ramen metrics available and their descriptions,
 run the Ramen code, then run this command:
-`curl http://localhost:8443/metrics -s | grep "# HELP ramen_"`.
+`curl -k -H "Authorization: Bearer $TOKEN" https://localhost:8443/metrics -s | grep "# HELP ramen_"`.
