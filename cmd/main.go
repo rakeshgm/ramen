@@ -24,9 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	virtv1 "kubevirt.io/api/core/v1"
 	ocmv1 "open-cluster-management.io/api/cluster/v1"
 	clusterv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
@@ -38,11 +40,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	ramendrv1alpha1 "github.com/ramendr/ramen/api/v1alpha1"
 	controllers "github.com/ramendr/ramen/internal/controller"
 	argocdv1alpha1hack "github.com/ramendr/ramen/internal/controller/argocd"
 	rmnutil "github.com/ramendr/ramen/internal/controller/util"
+
 	// +kubebuilder:scaffold:imports
 	_ "github.com/ramendr/ramen/internal/dummy"
 )
@@ -87,10 +92,16 @@ func bindFlags(bindfuncs ...func(*flag.FlagSet)) {
 }
 
 func buildOptions() (*ctrl.Options, *ramendrv1alpha1.RamenConfig) {
-	ctrlOptions := ctrl.Options{Scheme: scheme}
-
 	ramenConfig := controllers.LoadControllerConfig(configFile, setupLog)
-	controllers.LoadControllerOptions(&ctrlOptions, ramenConfig)
+
+	ctrlOptions := ctrl.Options{
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress:    ramenConfig.Metrics.BindAddress,
+			SecureServing:  true, // Enable HTTPS
+			FilterProvider: filters.WithAuthenticationAndAuthorization,
+		},
+	}
 
 	return &ctrlOptions, ramenConfig
 }

@@ -6,10 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 # Metrics
 
 Metrics are collected using Prometheus, and registered with its global
-metrics registry in each controller. There are two ways where you can
-look at the metrics in ramen. One way is use prometheus stack(recommended)
-and the other way is to use curl or postman. More details on
-each of these in the below sections.
+metrics registry in each controller. Ramen uses controller-runtime's native
+metrics authentication and authorization, which secures the metrics endpoint
+using Kubernetes RBAC without requiring additional sidecar containers.
+
+There are two ways to access metrics in Ramen: using the Prometheus stack
+(recommended) or direct access via curl/port-forward. More details on
+each of these in the sections below.
 
 More information on metrics is [here](https://book.kubebuilder.io/reference/metrics.html)
 
@@ -46,17 +49,26 @@ Next is to install and configure ramen.
 If running from minikube or a container, expose the port using `port-forward`
 on the hub. The endpoint exposed is `localhost:8443/metrics`.
 
->*This way does not use kube-rbac-proxy, use this method only for any quick debugging*
-
 ```bash
 kubectl port-forward -n ramen-system \
-deployment/ramen-hub-operator 8443:9289
+deployment/ramen-hub-operator 8443:8443
 ```
 
-Verify that the metrics endpoint is exposed with curl:
-`curl http://localhost:8443/metrics`.
+The metrics endpoint is secured with authentication and authorization.
+To access it, you need a valid ServiceAccount token:
 
-If curl can connect, search for your metrics in the output.
+```bash
+# Get a token for a ServiceAccount with proper permissions
+TOKEN=$(kubectl create token <service-account-name> -n <namespace>)
+
+# Access metrics with authentication
+curl -k -H "Authorization: Bearer $TOKEN" https://localhost:8443/metrics
+```
+
+For quick debugging without authentication (not recommended for production),
+you can temporarily disable metrics authentication by setting
+`RamenConfig.Metrics.BindAddress` to `"0"` or by modifying the controller
+configuration.
 
 ### Metrics List
 
