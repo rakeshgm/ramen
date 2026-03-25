@@ -8,7 +8,7 @@ name: "mdr"
 ramen:
   hub: hub
   clusters: [dr1, dr2]
-  storage: storage
+  storage_cluster: storage-cluster
   topology: metro-dr
   features:
     volsync: false
@@ -24,8 +24,6 @@ templates:
     network: "$network"
     cpus: 4
     memory: "5g"
-    feature_gates:
-      - StatefulSetAutoDeletePVC=true
     workers:
       - addons:
           - name: ocm-cluster
@@ -56,8 +54,6 @@ templates:
     memory: "6g"
     extra_disks: 1
     disk_size: "50g"
-    feature_gates:
-      - StatefulSetAutoDeletePVC=true
     workers:
       - addons:
           - name: rook-operator
@@ -68,7 +64,7 @@ templates:
           - name: olm
           - name: external-snapshotter
           - name: csi-addons
-          - name: minio
+          # - name: minio
 
 profiles:
   - name: "dr1"
@@ -77,16 +73,19 @@ profiles:
     template: "dr-cluster"
   - name: "hub"
     template: "hub-cluster"
-  - name: "storage"
+  - name: "storage-cluster"
     template: "storage-cluster"
 
 workers:
   - addons:
       - name: rook-external-cluster
-        args: ["dr1", "storage"]
-  - addons:
+        args: ["dr1", "storage-cluster"]
       - name: rook-external-cluster
-        args: ["dr2", "storage"]
+        args: ["dr2", "storage-cluster"]
+      - name: minio
+        args: ["dr1"]
+      - name: minio
+        args: ["dr2"]
   - addons:
       - name: argocd
         args: ["hub", "dr1", "dr2"]
